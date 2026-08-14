@@ -1,0 +1,22 @@
+[Unit]
+Description=Jellyfin Media Server
+After=network-online.target mergerfs.service
+Wants=network-online.target mergerfs.service
+RequiresMountsFor=/mnt/media /mnt/jellyfin
+
+[Service]
+ExecStartPre=/usr/bin/podman rm -f jellyfin
+ExecStart=/usr/bin/podman run --name jellyfin --rm \
+  --network host \
+  --user 1000:1000 \
+  -v /mnt/media:/media:ro \
+  -v /mnt/jellyfin/config:/config \
+  -v /mnt/jellyfin/cache:/cache \
+  -v /mnt/jellyfin/transcodes:/transcodes \
+  docker.io/jellyfin/jellyfin:latest
+Restart=on-failure
+RestartSec=10
+ExecStop=/usr/bin/podman stop jellyfin
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+# Sensitive stuff
+.env
+*.env
+!install/*.sh
+/secrets/
+
+# Container runtime junk
+__pycache__/
+*.pyc
+
+# OS noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,22 @@
+[Unit]
+Description=SABnzbd - Usenet downloader
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/jellyfin/config/sabnzbd /mnt/media/downloads
+
+[Service]
+ExecStartPre=/usr/bin/podman rm -f sabnzbd
+ExecStart=/usr/bin/podman run --name sabnzbd --rm \
+  --network host \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=America/New_York \
+  -v /mnt/jellyfin/config/sabnzbd:/config \
+  -v /mnt/media/downloads:/downloads \
+  docker.io/linuxserver/sabnzbd:latest
+Restart=on-failure
+RestartSec=10
+ExecStop=/usr/bin/podman stop -t 30 sabnzbd
+
+[Install]
+WantedBy=multi-user.target
