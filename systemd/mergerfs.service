@@ -1,0 +1,13 @@
+[Unit]
+Description=mergerfs - pool of media drives
+After=local-fs.target
+RequiresMountsFor=/mnt/pool1 /mnt/pool2 /mnt/pool3
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/mergerfs -o defaults,allow_other,use_ino,hard_remove,dropcacheonclose=true,category.create=mfs,cache.files=partial,moveonenospc=true /mnt/pool1:/mnt/pool2:/mnt/pool3 /mnt/media
+ExecStop=/usr/bin/fusermount -uz /mnt/media
+
+[Install]
+WantedBy=multi-user.target

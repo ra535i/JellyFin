@@ -53,7 +53,7 @@ echo; echo "══════════════════════�
 echo "  SETUP COMPLETE"
 echo "════════════════════════════════════════════"
 echo "  Jellyfin   : http://192.168.50.152:8096"
-echo "  SABnzbd    : http://192.168.50.152:8080"
+echo "  SABnzbd    : http://192.168.50.152:8085"
 echo "  Prowlarr   : http://192.168.50.152:9696"
 echo "  Radarr     : http://192.168.50.152:7878"
 echo "  Sonarr     : http://192.168.50.152:8989"

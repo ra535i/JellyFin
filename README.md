@@ -1,7 +1,10 @@
 # Media Server — Bazzite
 
-Jellyfin + usability stack on Bazzite (immutable Fedora). All services run as
-systemd-managed podman containers. Survives reboots, survives OS updates.
+Jellyfin + *Arr stack on Bazzite (immutable Fedora). All services run as
+systemd-managed podman containers. Exposed externally via Cloudflare Tunnel
+with Cloudflare Access gating admin services.
+
+Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 
 ## Architecture
 
@@ -21,90 +24,155 @@ systemd-managed podman containers. Survives reboots, survives OS updates.
 │  Radarr → Sonarr → Prowlarr → SABnzbd → Downloads → import   │
 │                              │                                │
 │  Jellyfin (streaming) ← Jellyseerr (family requests)          │
+│                              │                                │
+│  Cloudflare Tunnel ── suvannmedia.com                          │
+│     ├── jellyfin.suvannmedia.com  (OPEN — mobile apps)         │
+│     ├── jellyseerr.suvannmedia.com (OPEN — family)             │
+│     ├── sabnzbd.suvannmedia.com   (Access gate)                │
+│     ├── prowlarr.suvannmedia.com  (Access gate)                │
+│     ├── radarr.suvannmedia.com    (Access gate)                │
+│     ├── sonarr.suvannmedia.com    (Access gate)                │
+│     └── bazarr.suvannmedia.com    (Access gate)                │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ## Services
 
-| Service    | Port  | Purpose                     |
-|------------|-------|-----------------------------|
-| Jellyfin   | 8096  | Media streaming             |
-| SABnzbd    | 8080  | Usenet downloader           |
-| Prowlarr   | 9696  | Indexer management          |
-| Radarr     | 7878  | Movie automation            |
-| Sonarr     | 8989  | TV automation               |
-| Bazarr     | 6767  | Subtitle automation         |
-| Jellyseerr | 5055  | Family request portal       |
+| Service    | Port  | Purpose                     | External                 | Auth             |
+|------------|-------|-----------------------------|--------------------------|------------------|
+| Jellyfin   | 8096  | Media streaming             | jellyfin.suvannmedia.com | Open (Jellyfin)  |
+| Jellyseerr | 5055  | Family request portal       | jellyseerr.suvannmedia.com | Open (Jellyfin)|
+| SABnzbd    | 8085  | Usenet downloader           | sabnzbd.suvannmedia.com  | Access gate      |
+| Prowlarr   | 9696  | Indexer management          | prowlarr.suvannmedia.com | Access gate      |
+| Radarr     | 7878  | Movie automation            | radarr.suvannmedia.com   | Access gate      |
+| Sonarr     | 8989  | TV automation               | sonarr.suvannmedia.com   | Access gate      |
+| Bazarr     | 6767  | Subtitle automation         | bazarr.suvannmedia.com   | Access gate      |
 
-## First-time setup (new machine)
+## Prerequisites
 
-On a fresh Bazzite install, one-time prep:
+Before you start, you'll need:
+
+1. **Hardware** — 3x USB drives (pool), 1x SSD/HDD (config)
+2. **Domain** — registered at Cloudflare ($8–12/yr)
+3. **Usenet provider** — Frugal Usenet (~$5/mo)
+4. **Indexer** — NZBGeek (~$10/yr)
+5. **TMDb API key** — free from themoviedb.org
+
+## Quick rebuild (fresh Bazzite install)
 
 ```bash
-# 1. Mount the drives (edit /etc/fstab with UUIDs from blkid)
-sudo mkdir -p /mnt/pool1 /mnt/pool2 /mnt/pool3 /mnt/jellyfin
-# Add fstab entries like:
-# UUID=fe62eb62... /mnt/pool1 ext4 defaults,nofail 0 2
-# ... etc
+# 1. Clone this repo
+sudo dnf install -y git
+git clone https://github.com/ra535i/JellyFin.git /opt/jellyfin
+cd /opt/jellyfin
+
+# 2. Mount your drives
+#    Edit /etc/fstab with your drive UUIDs from blkid(8)
+#    Mount points: /mnt/pool1, /mnt/pool2, /mnt/pool3, /mnt/jellyfin
 sudo mount -a
 
-# 2. Run the full setup
-sudo bash install/install_mergerfs.sh
-sudo bash install/setup.sh
+# 3. Run the stack installer
+sudo bash install/install_mergerfs.sh   # mergerfs pool from 3 drives
+sudo bash install/setup.sh               # Jellyfin + Arr stack
 ```
 
-## Rebuild from scratch (everything blown away)
+Your existing configs on `/mnt/jellyfin/config/` are preserved — all apps come
+back with their same settings, users, libraries, and API keys.
+
+## First-time setup (from scratch, no configs)
+
+If `/mnt/jellyfin/config/` is empty (truly fresh build), you'll also need:
+
+### Step 1: Apply SABnzbd tunnel fix
+
+SABnzbd blocks external access by default. Since it's behind Cloudflare Tunnel,
+the requests appear to come from Cloudflare's IPs. Edit the config:
+
+```ini
+# /mnt/jellyfin/config/sabnzbd/sabnzbd.ini
+host_whitelist = bazzite, sabnzbd.suvannmedia.com
+local_ranges = 0.0.0.0/0
+```
+
+Then restart: `sudo systemctl restart sabnzbd`
+
+### Step 2: Wire the apps together
+
+After the initial config of each app:
+
+| Step | What | How |
+|------|------|-----|
+| 1 | SABnzbd | Config → General → Enable API key (copy it) |
+| 2 | Prowlarr | Settings → Apps → Add Radarr + Sonarr + SABnzbd |
+| 3 | Radarr | Settings → Download Client → Add SABnzbd (paste key) |
+| 4 | Radarr | Settings → Indexers → Add Prowlarr |
+| 5 | Radarr | Settings → Media Management → Root folder → `/movies` |
+| 6 | Sonarr | Same as Radarr but root folder → `/tv` |
+| 7 | Jellyseerr | Settings → Jellyfin → Connect (URL + API key) |
+| 8 | Jellyseerr | Settings → Radarr/Sonarr → Connect |
+| 9 | Bazarr | Settings → Radarr/Sonarr → Connect |
+| 10 | Bazarr | Subtitles → Provider → Add Opensubtitles etc. |
+
+### Step 3: Expose externally via Cloudflare Tunnel
 
 ```bash
-# 1. Clone the repo on a fresh machine
-git clone <your-repo-url> media-server
-cd media-server
+# Set your API token
+export CF_API_TOKEN='your-token-here'
 
-# 2. Mount drives (see "First-time setup" above)
-#    (assumes drives are still partitioned/formatted with the same UUIDs)
+# Install tunnel + create DNS records
+bash cloudflare/install_tunnel.sh
 
-# 3. Install everything
-sudo bash install/install_mergerfs.sh
-sudo bash install/setup.sh
+# Create Access gates for admin services
+bash cloudflare/setup_access.sh
 ```
 
-## Usenet accounts
+These scripts handle:
+- Downloading cloudflared
+- Authenticating with your Cloudflare API token
+- Creating the tunnel + credentials
+- Setting up DNS CNAME records (jellyfin, jellyseerr, sabnzbd, prowlarr, radarr, sonarr, bazarr)
+- Installing a user systemd service (survives reboot with linger)
 
-Before the stack works, you need:
+> **Note:** `install_tunnel.sh` expects `config.yml.template` to be customized.
+> Edit `cloudflare/config.yml.template` with your tunnel name and domain first.
 
-1. **Usenet provider** (recommended: Eweka ~€6/mo)
-   - Sign up at https://www.eweka.nl
-   - Get your server hostname, username, password
-   - Input into SABnzbd (`http://[ip]:8080`) → Config → Servers
+## Cloudflare Access
 
-2. **Indexer** (recommended: NZBGeek ~$10/yr)
-   - Sign up at https://nzbgeek.info
-   - Get your API key
-   - Add to Prowlarr (`http://[ip]:9696`) → Indexers → Add NZBGeek
+Admin services (SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr) are gated behind
+Cloudflare Access with Google OAuth. Only `suvann540i@gmail.com` is allowed.
 
-## Stack wiring (after setup)
+Jellyfin and Jellyseerr are **open** (no Access gate) so mobile apps and family
+can connect without authentication.
 
-After the initial config of each app, wire them together:
+## Port notes
 
-**SABnzbd** → Config → General → Enable API key (copy it)
-**Prowlarr** → Settings → Apps → Add Radarr + Sonarr + SABnzbd
-**Radarr** → Settings → Download Client → Add SABnzbd (paste API key)
-**Radarr** → Settings → Indexers → Add Prowlarr
-**Radarr** → Settings → Media Management → Root folder → `/movies`
-**Sonarr** → Same as Radarr but root folder → `/tv`
-**Jellyseerr** → Settings → Jellyfin → Connect (Jellyfin URL, API key)
-**Jellyseerr** → Settings → Radarr/Sonarr → Connect
-**Bazarr** → Settings → Radarr/Sonarr → Connect
-**Bazarr** → Subtitles → Provider → Add proxy/subtitle sources
+- **SABnzbd** runs on **8085** (container config sets `port = 8085` in sabnzbd.ini,
+  not the default 8080). This is set in the container's persistent config,
+  not in the systemd unit.
+- All services use `--network host` — no port mapping needed in docker args.
 
-## Migrating from a disaster
+## Rebuilding from total disaster
 
-If the whole machine needs to be rebuilt:
+If the entire machine dies:
 
-1. Reinstall Bazzite
-2. `git clone <repo>`  
-3. Mount drives (they're still partitioned/formatted, just mount via fstab)
+1. Install Bazzite fresh
+2. Mount your drives (still partitioned, same UUIDs — just add to fstab)
+3. `git clone https://github.com/ra535i/JellyFin.git`
 4. `sudo bash install/install_mergerfs.sh`
 5. `sudo bash install/setup.sh`
-6. All app configs are on `/mnt/jellyfin/config/` — they survive the rebuild
-7. Jellyfin, Radarr, Sonarr, etc. will come back with their same configs
+6. Apply SABnzbd tunnel fix (Step 1 above)
+7. Deploy tunnel + Access: `bash cloudflare/install_tunnel.sh && bash cloudflare/setup_access.sh`
+8. All app configs on `/mnt/jellyfin/config/` — they come back with everything intact
+
+## Cost breakdown
+
+| Item | Cost |
+|------|------|
+| Domain (suvannmedia.com) | $8–12/yr |
+| Cloudflare Tunnel | Free |
+| Cloudflare Access (up to 50 users) | Free |
+| Usenet (Frugal) | ~$5/mo |
+| Indexer (NZBGeek) | ~$10/yr |
+| **Total** | **~$15/mo** |
+
+Vs. streaming subs that'd cost 3× that.

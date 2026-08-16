@@ -1,0 +1,41 @@
+# Cloudflare Tunnel config — suvannmedia.com
+#
+# EDIT THESE BEFORE FIRST USE:
+#   1. Set your tunnel UUID and domain below
+#   2. Place your credentials.json at the path referenced
+#   3. Run the install script
+#
+tunnel: suvannmedia-tunnel
+credentials-file: /home/skim/.cloudflared/credentials.json
+
+ingress:
+  # Jellyfin - main media server
+  - hostname: jellyfin.suvannmedia.com
+    service: http://localhost:8096
+
+  # Jellyseerr - request frontend
+  - hostname: jellyseerr.suvannmedia.com
+    service: http://localhost:5055
+
+  # SABnzbd - download client
+  - hostname: sabnzbd.suvannmedia.com
+    service: http://localhost:8085
+
+  # Prowlarr - indexer manager
+  - hostname: prowlarr.suvannmedia.com
+    service: http://localhost:9696
+
+  # Radarr - movies
+  - hostname: radarr.suvannmedia.com
+    service: http://localhost:7878
+
+  # Sonarr - TV shows
+  - hostname: sonarr.suvannmedia.com
+    service: http://localhost:8989
+
+  # Bazarr - subtitles
+  - hostname: bazarr.suvannmedia.com
+    service: http://localhost:6767
+
+  # Catch-all - return 404 for unknown hosts
+  - service: http_status:404
