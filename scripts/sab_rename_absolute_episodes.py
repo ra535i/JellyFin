@@ -5,7 +5,7 @@ Renames files with absolute episode numbering (S3-55) to proper SxxExx format
 so Sonarr can import them.
 
 S3 absolute episode mapping: 38-59 → S03E01-S03E22
-The Final Season (S4) absolute episode mapping: 60-94 → varies
+The Final Season (S4) absolute episode mapping: 60-94 → S04E01-S04E28
 
 Install: Copy to SABnzbd's scripts folder and select as post-processing script
 """
@@ -15,65 +15,55 @@ import re
 import sys
 import shutil
 
-# Mapping for Attack on Titan season packs with absolute numbering
-# Format: (season_num, absolute_start, episode_count)
-AOT_MAPPINGS = [
-    # Season 1: eps 1-25 (absolute 1-25)
-    # Season 2: eps 26-37 (absolute 26-37)
-    # Season 3 Part 1: eps 38-49 (absolute 38-49) → S03E01-S03E12
-    # Season 3 Part 2: eps 50-59 (absolute 50-59) → S03E13-S03E22
-    # The Final Season: eps 60-94 (varies by release)
-]
-
-# Season 3 specific: absolute 38-59 → S03E01-S03E22
-# S3-38 → S03E01, S3-39 → S03E02, ..., S3-59 → S03E22
+# Season 3: absolute 38-59 → S03E01-S03E22
 S3_ABSOLUTE_OFFSET = 37  # absolute - 37 = episode number
+
+
+def _resolve_absolute_ep(base):
+    """Extract the true absolute episode number from various AoT naming formats.
+
+    Moozzi2 standard:    S3-14 [ 51 ]           → absolute 51
+    Moozzi2 multi-ep:    The Final Season-30 END [ 91-94 ] → first ep 91
+    neko-kBaraka:        S3 - 55                → absolute 55
+    """
+    # Moozzi2 multi-episode pack: "The Final Season-30 END [ 91-94 ]"
+    m_multi = re.search(r'\[\s*(\d+)\s*-\s*(\d+)\s*\]', base)
+    if m_multi:
+        return int(m_multi.group(1))  # Return first episode in the range
+    # Moozzi2 single: S3-14 [ 51 ]
+    m_mooz = re.search(r'S3-\d+\s*\[\s*(\d+)\s*\]', base)
+    if m_mooz:
+        return int(m_mooz.group(1))
+    # Standard: S3-55 or S3 - 55
+    m_std = re.search(r'S(\d+)\s*-\s*(\d+)', base)
+    if m_std:
+        return int(m_std.group(2))
+    return None
 
 
 def fix_attack_on_titan_filename(filename):
     """Rename AoT files with absolute numbering to proper SxxExx format."""
     base, ext = os.path.splitext(filename)
     if ext.lower() not in ('.mkv', '.mp4', '.avi'):
-        return filename  # Not a video file, skip
-
-    # Pattern: S3-55 or S3-14 or S4-88 etc
-    m = re.search(r'S(\d+)-(\d+)', base)
-    if not m:
         return filename
 
-    season = int(m.group(1))
-    absolute_ep = int(m.group(2))
+    absolute_ep = _resolve_absolute_ep(base)
+    if absolute_ep is None:
+        return filename
 
     # Season 3: absolute 38-59 → S03E01-S03E22
-    if season == 3 and 38 <= absolute_ep <= 59:
-        ep_num = absolute_ep - S3_ABSOLUTE_OFFSET
-        new_base = re.sub(
-            r'S3-\d+',
-            f'S03E{ep_num:02d}',
-            base
-        )
-        # Clean up the rest of the garbage naming
-        # Remove [Moozzi2] / [neko-kBaraka] style prefixes
+    if 38 <= absolute_ep <= 59:
+        ep_num = absolute_ep - 37
+        new_base = re.sub(r'S3\s*-\s*\d+', f'S03E{ep_num:02d}', base)
         new_base = re.sub(r'^\[.*?\]\s*', '', new_base)
-        # Clean up extra spaces
         new_base = re.sub(r'\s+', ' ', new_base).strip()
         return f'{new_base}{ext}'
 
-    # Season 4 / The Final Season: varies
-    if season == 4 and 60 <= absolute_ep <= 94:
-        # The Final Season episodes are split weirdly
-        # This needs per-release mapping since releases bundle multiple episodes
-        # For now, try the same approach
-        # S4-60 → S04E01? No, S04E01 is absolute 60
-        # Actually for The Final Season, absolute 60 = S04E01
-        final_season_offset = 59
-        ep_num = absolute_ep - final_season_offset
+    # The Final Season: absolute 60-94 → S04E01-S04E28
+    if 60 <= absolute_ep <= 94:
+        ep_num = absolute_ep - 59
         if 1 <= ep_num <= 28:
-            new_base = re.sub(
-                r'S4-\d+',
-                f'S04E{ep_num:02d}',
-                base
-            )
+            new_base = re.sub(r'S4\s*-\s*\d+', f'S04E{ep_num:02d}', base)
             new_base = re.sub(r'^\[.*?\]\s*', '', new_base)
             new_base = re.sub(r'\s+', ' ', new_base).strip()
             return f'{new_base}{ext}'
@@ -82,16 +72,11 @@ def fix_attack_on_titan_filename(filename):
 
 
 def fix_any_absolute_numbering(filename):
-    """
-    Generic fix for any show using absolute numbering.
-    Looks for patterns like S3-14 or S03-14 and tries to map them.
-    Without a known mapping, it can't auto-fix, but this catches AoT.
-    """
+    """Route to show-specific fixers."""
     base, ext = os.path.splitext(filename)
     if ext.lower() not in ('.mkv', '.mp4', '.avi'):
         return filename
 
-    # Try specific show fixes
     if 'shingeki' in base.lower() or 'kyojin' in base.lower() or 'attack' in base.lower():
         return fix_attack_on_titan_filename(filename)
 
@@ -108,7 +93,6 @@ def main():
     5 - the category
     """
     if len(sys.argv) < 2:
-        # Running standalone - process all files in current dir
         directory = os.getcwd()
     else:
         directory = sys.argv[1]

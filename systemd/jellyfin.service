@@ -9,10 +9,14 @@ ExecStartPre=/usr/bin/podman rm -f jellyfin
 ExecStart=/usr/bin/podman run --name jellyfin --rm \
   --network host \
   --user 1000:1000 \
+  --device /dev/dri:/dev/dri \
   -v /mnt/media:/media:ro \
   -v /mnt/jellyfin/config:/config \
   -v /mnt/jellyfin/cache:/cache \
   -v /mnt/jellyfin/transcodes:/transcodes \
+  -v /usr/lib64/libOpenCL.so.1:/usr/lib/libOpenCL.so.1:ro \
+  -v /usr/lib64/libdrm_amdgpu.so.1:/usr/lib/libdrm_amdgpu.so.1:ro \
+  -v /usr/lib64/libdrm.so.2:/usr/lib/libdrm.so.2:ro \
   docker.io/jellyfin/jellyfin:latest
 Restart=on-failure
 RestartSec=10
