@@ -23,6 +23,8 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 │                              │                                │
 │  Radarr → Sonarr → Prowlarr → SABnzbd → Downloads → import   │
 │                              │                                │
+│  Tdarr (transcode REMUX → 20Mbps HEVC)                       │
+│                              │                                │
 │  Jellyfin (streaming) ← Jellyseerr (family requests)          │
 │                              │                                │
 │  Cloudflare Tunnel ── suvannmedia.com                          │
@@ -33,6 +35,7 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 │     ├── radarr.suvannmedia.com    (Access gate)                │
 │     ├── sonarr.suvannmedia.com    (Access gate)                │
 │     └── bazarr.suvannmedia.com    (Access gate)                │
+│     └── tdarr.suvannmedia.com     (Access gate)                │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -47,6 +50,7 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 | Radarr     | 7878  | Movie automation            | radarr.suvannmedia.com   | Access gate      |
 | Sonarr     | 8989  | TV automation               | sonarr.suvannmedia.com   | Access gate      |
 | Bazarr     | 6767  | Subtitle automation         | bazarr.suvannmedia.com   | Access gate      |
+| Tdarr      | 8265  | Transcode automation        | tdarr.suvannmedia.com    | Access gate      |
 
 ## Prerequisites
 
@@ -74,6 +78,10 @@ sudo mount -a
 # 3. Run the stack installer
 sudo bash install/install_mergerfs.sh   # mergerfs pool from 3 drives
 sudo bash install/setup.sh               # Jellyfin + Arr stack
+
+# 4. Deploy Tdarr transcode pipeline
+sudo cp systemd/tdarr.service /etc/systemd/system/
+sudo systemctl enable --now tdarr
 ```
 
 Your existing configs on `/mnt/jellyfin/config/` are preserved — all apps come
@@ -130,7 +138,7 @@ These scripts handle:
 - Downloading cloudflared
 - Authenticating with your Cloudflare API token
 - Creating the tunnel + credentials
-- Setting up DNS CNAME records (jellyfin, jellyseerr, sabnzbd, prowlarr, radarr, sonarr, bazarr)
+- Setting up DNS CNAME records (jellyfin, jellyseerr, sabnzbd, prowlarr, radarr, sonarr, bazarr, tdarr)
 - Installing a user systemd service (survives reboot with linger)
 
 > **Note:** `install_tunnel.sh` expects `config.yml.template` to be customized.
