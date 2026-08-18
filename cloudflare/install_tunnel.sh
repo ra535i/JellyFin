@@ -28,7 +28,7 @@ CF_ACCOUNT_ID="fe5505252424944f4111b7059bcab9a1"
 # CF_API_TOKEN — set as env var or paste below
 : "${CF_API_TOKEN:=""}"
 
-SUBDOMAINS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr)
+SUBDOMAINS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr fileflows)
 
 # ===== Install cloudflared =====
 echo "═══ INSTALLING CLOUDFLARED ═══"

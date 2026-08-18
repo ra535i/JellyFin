@@ -37,5 +37,9 @@ ingress:
   - hostname: bazarr.suvannmedia.com
     service: http://localhost:6767
 
+  # FileFlows - media processing / transcode
+  - hostname: fileflows.suvannmedia.com
+    service: http://127.0.0.1:19200
+
   # Catch-all - return 404 for unknown hosts
   - service: http_status:404

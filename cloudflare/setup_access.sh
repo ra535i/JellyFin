@@ -21,7 +21,7 @@ SESSION_DURATION="24h"
 : "${CF_API_TOKEN:=""}"
 
 # Admin services — behind Google OAuth
-ADMIN_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr)
+ADMIN_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr fileflows)
 
 if [ -z "$CF_API_TOKEN" ]; then
     echo "ERROR: CF_API_TOKEN not set. Run:  export CF_API_TOKEN='your-token'"

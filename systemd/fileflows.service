@@ -1,0 +1,25 @@
+[Unit]
+Description=FileFlows - Media processing automation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStartPre=/usr/bin/podman rm -f fileflows
+ExecStart=/usr/bin/podman run --name fileflows --rm \
+  -p 19200:5000 \
+  --device /dev/dri:/dev/dri \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=America/New_York \
+  -v /mnt/jellyfin/config/fileflows:/app/Config \
+  -v /mnt/jellyfin/config/fileflows/logs:/app/Logs \
+  -v /mnt/jellyfin/config/fileflows/temp:/app/Temp \
+  -v /mnt/media:/media:ro,z \
+  -v /mnt/media/fileflows-working:/temp:z \
+  localhost/fileflows-amd-vaapi:latest
+Restart=on-failure
+RestartSec=10
+ExecStop=/usr/bin/podman stop -t 30 fileflows
+
+[Install]
+WantedBy=multi-user.target
