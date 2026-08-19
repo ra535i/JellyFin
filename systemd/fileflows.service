@@ -11,11 +11,11 @@ ExecStart=/usr/bin/podman run --name fileflows --rm \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/fileflows:/app/Config \
-  -v /mnt/jellyfin/config/fileflows/logs:/app/Logs \
-  -v /mnt/jellyfin/config/fileflows/temp:/app/Temp \
-  -v /mnt/media:/media:ro,z \
-  -v /mnt/media/fileflows-working:/temp:z \
+  -v /mnt/jellyfin/config/fileflows:/app/Data:Z \
+  -v /mnt/jellyfin/config/fileflows/logs:/app/Logs:Z \
+  -v /mnt/jellyfin/config/fileflows/temp:/app/Temp:Z \
+  -v /mnt/media:/media:Z \
+  -v /mnt/media/fileflows-working:/temp:Z \
   localhost/fileflows-amd-vaapi:latest
 Restart=on-failure
 RestartSec=10
