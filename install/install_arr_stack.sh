@@ -13,14 +13,16 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SYSTEMD_DIR="$REPO/systemd"
 
-SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr)
+SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr fileflows)
 
 # --- Preflight: mount points & images -------------------------------------
 echo "═══ PREFLIGHT ═══"
-for d in /mnt/media/downloads /mnt/media/movies /mnt/media/tv \
+for d in /mnt/media/downloads /mnt/media/movies /mnt/media/tv /mnt/media/fileflows-working \
          /mnt/jellyfin/config/sabnzbd /mnt/jellyfin/config/prowlarr \
          /mnt/jellyfin/config/radarr /mnt/jellyfin/config/sonarr \
-         /mnt/jellyfin/config/bazarr /mnt/jellyfin/config/jellyseerr; do
+         /mnt/jellyfin/config/bazarr /mnt/jellyfin/config/jellyseerr \
+         /mnt/jellyfin/config/fileflows /mnt/jellyfin/config/fileflows/logs \
+         /mnt/jellyfin/config/fileflows/temp; do
     mkdir -p "$d"
 done
 echo "dirs ok"
@@ -53,7 +55,7 @@ for svc in "${SERVICES[@]}"; do
 done
 
 echo; echo "═══ HTTP CHECK ═══"
-declare -A PORT=( [sabnzbd]=8085 [prowlarr]=9696 [radarr]=7878 [sonarr]=8989 [bazarr]=6767 [jellyseerr]=5055 )
+declare -A PORT=( [sabnzbd]=8085 [prowlarr]=9696 [radarr]=7878 [sonarr]=8989 [bazarr]=6767 [jellyseerr]=5055 [fileflows]=5000 )
 for svc in "${SERVICES[@]}"; do
     port="${PORT[$svc]}"
     code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$port/" 2>/dev/null || echo "000")

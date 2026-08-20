@@ -59,5 +59,6 @@ echo "  Radarr     : http://192.168.50.152:7878"
 echo "  Sonarr     : http://192.168.50.152:8989"
 echo "  Bazarr     : http://192.168.50.152:6767"
 echo "  Jellyseerr : http://192.168.50.152:5055"
+echo "  FileFlows  : http://192.168.50.152:5000"
 echo
 echo "  NEXT: add usenet provider + indexer creds (see README section 'Usenet accounts')"

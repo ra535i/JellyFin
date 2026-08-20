@@ -39,7 +39,7 @@ ingress:
 
   # FileFlows - media processing / transcode
   - hostname: fileflows.suvannmedia.com
-    service: http://127.0.0.1:19200
+    service: http://localhost:5000
 
   # Catch-all - return 404 for unknown hosts
   - service: http_status:404

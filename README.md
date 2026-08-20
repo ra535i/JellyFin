@@ -50,7 +50,7 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 | Radarr     | 7878  | Movie automation            | radarr.suvannmedia.com       | Access gate      |
 | Sonarr     | 8989  | TV automation               | sonarr.suvannmedia.com       | Access gate      |
 | Bazarr     | 6767  | Subtitle automation         | bazarr.suvannmedia.com       | Access gate      |
-| FileFlows  | 19200 | Transcode automation        | fileflows.suvannmedia.com    | Access gate      |
+| FileFlows  | 5000  | Media processing pipeline    | fileflows.suvannmedia.com    | Access gate      |
 
 ## Prerequisites
 
@@ -75,30 +75,22 @@ cd /opt/jellyfin
 #    Mount points: /mnt/pool1, /mnt/pool2, /mnt/pool3, /mnt/jellyfin
 sudo mount -a
 
-# 3. Run the stack installer
-sudo bash install/install_mergerfs.sh   # mergerfs pool from 3 drives
-sudo bash install/setup.sh               # Jellyfin + Arr stack
-
-# 4. Deploy FileFlows transcode pipeline
-#    First build the custom image with FFmpeg + VAAPI:
-sudo podman run -d --name fileflows-tmp \
-  -p 19200:5000 \
+# 3. Build the FileFlows custom image (needs ffmpeg + VAAPI)
+#    This must be done before the stack installer runs:
+sudo podman run -d --name fileflows-builder \
   --device /dev/dri:/dev/dri \
-  -e PUID=1000 -e PGID=1000 -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/fileflows:/app/Config:Z \
-  -v /mnt/jellyfin/config/fileflows/logs:/app/Logs:Z \
-  -v /mnt/jellyfin/config/fileflows/temp:/app/Temp:Z \
-  -v /mnt/media:/media:ro,Z \
-  -v /mnt/media/fileflows-working:/temp:Z \
   docker.io/revenz/fileflows:latest
-sudo podman exec -u 0 fileflows-tmp apt update && apt install -y ffmpeg vainfo mesa-va-drivers
-sudo podman stop fileflows-tmp
-sudo podman commit fileflows-tmp fileflows-amd-vaapi:latest
-sudo podman rm fileflows-tmp
+sudo podman exec -u 0 fileflows-builder apt update && apt install -y ffmpeg vainfo mesa-va-drivers
+sudo podman stop fileflows-builder
+sudo podman commit fileflows-builder fileflows-amd-vaapi:latest
+sudo podman rm fileflows-builder
 
-# Then deploy the permanent service:
-sudo cp systemd/fileflows.service /etc/systemd/system/
-sudo systemctl enable --now fileflows
+# 4. Run the stack installer (Jellyfin + all Arr services + FileFlows)
+sudo bash install/install_mergerfs.sh   # mergerfs pool from 3 drives
+sudo bash install/setup.sh               # Jellyfin + Arr stack + FileFlows
+
+# The setup script handles everything: units, config dirs, enabling, starting.
+# All services survive reboots via systemd.
 ```
 
 Your existing configs on `/mnt/jellyfin/config/` are preserved — all apps come
@@ -174,9 +166,8 @@ can connect without authentication.
 - **SABnzbd** runs on **8085** (container config sets `port = 8085` in sabnzbd.ini,
   not the default 8080). This is set in the container's persistent config,
   not in the systemd unit.
-- **FileFlows** uses port mapping (`19200:5000`) — not `--network host`.
-  The Cloudflare tunnel ingress must use `http://127.0.0.1:19200` (not `localhost`)
-  because port-mapped containers only bind IPv4.
+- **FileFlows** uses port **5000** (official image default). Since it now uses
+  `--network host` like everything else, no port mapping is needed.
 - All other services use `--network host` — no port mapping needed in docker args.
 
 ## FileFlows Flow
@@ -199,9 +190,9 @@ If the entire machine dies:
 2. Mount your drives (still partitioned, same UUIDs — just add to fstab)
 3. `git clone https://github.com/ra535i/JellyFin.git`
 4. `sudo bash install/install_mergerfs.sh`
-5. `sudo bash install/setup.sh`
-6. Apply SABnzbd tunnel fix (Step 1 above)
-7. Build FileFlows image + deploy service (Step 4 in Quick rebuild)
+5. Build FileFlows custom image (see Step 3 in Quick rebuild above)
+6. `sudo bash install/setup.sh`
+7. Apply SABnzbd tunnel fix (Step 1 above)
 8. Deploy tunnel + Access: `bash cloudflare/install_tunnel.sh && bash cloudflare/setup_access.sh`
 9. All app configs on `/mnt/jellyfin/config/` — they come back with everything intact
 
