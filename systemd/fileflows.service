@@ -1,26 +1,31 @@
 [Unit]
-Description=FileFlows - Media processing pipeline
-After=network-online.target mergerfs.service
-Wants=network-online.target mergerfs.service
-RequiresMountsFor=/mnt/jellyfin/config/fileflows /mnt/media
+Description=FileFlows - Media processing automation
+After=network-online.target var-mnt-jellyfin.mount
+Wants=network-online.target var-mnt-jellyfin.mount
+RequiresMountsFor=/var/mnt/jellyfin /var/mnt/media
 
 [Service]
-ExecStartPre=/usr/bin/podman rm -f fileflows
-ExecStart=/usr/bin/podman run --name fileflows --rm \
+User=skim
+Group=skim
+ExecStartPre=-/usr/bin/podman rm -f fileflows
+ExecStart=/usr/bin/podman run --name fileflows --pull=never --replace \
   --network host \
   --device /dev/dri:/dev/dri \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/fileflows:/app/Config \
+  -v /mnt/jellyfin/config/fileflows/Data:/app/Data \
   -v /mnt/jellyfin/config/fileflows/logs:/app/Logs \
   -v /mnt/jellyfin/config/fileflows/temp:/app/Temp \
   -v /mnt/media:/media:rw \
   -v /mnt/media/fileflows-working:/temp \
-  fileflows-amd-vaapi:latest
+  localhost/fileflows-amd-vaapi:latest
+ExecStop=/usr/bin/podman stop -t 10 fileflows
+ExecStopPost=-/usr/bin/podman rm -f fileflows
 Restart=on-failure
 RestartSec=10
-ExecStop=/usr/bin/podman stop -t 30 fileflows
+TimeoutStartSec=300
+TimeoutStopSec=20
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

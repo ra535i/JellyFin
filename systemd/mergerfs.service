@@ -7,7 +7,8 @@ RequiresMountsFor=/mnt/pool1 /mnt/pool2 /mnt/pool3
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/local/bin/mergerfs -o defaults,allow_other,use_ino,hard_remove,dropcacheonclose=true,category.create=mfs,cache.files=partial,moveonenospc=true /mnt/pool1:/mnt/pool2:/mnt/pool3 /mnt/media
-ExecStop=/usr/bin/fusermount -uz /mnt/media
+ExecStop=/usr/bin/fusermount3 -u /mnt/media
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target

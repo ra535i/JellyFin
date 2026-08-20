@@ -17,6 +17,12 @@ SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr fileflows)
 
 # --- Preflight: mount points & images -------------------------------------
 echo "═══ PREFLIGHT ═══"
+
+# Verify jellyfin drive mount
+if ! mountpoint -q /var/mnt/jellyfin && ! mountpoint -q /mnt/jellyfin; then
+    echo "ERROR: /var/mnt/jellyfin not mounted. Run install/setup.sh first to mount the config drive." >&2
+    exit 1
+fi
 for d in /mnt/media/downloads /mnt/media/movies /mnt/media/tv /mnt/media/fileflows-working \
          /mnt/jellyfin/config/sabnzbd /mnt/jellyfin/config/prowlarr \
          /mnt/jellyfin/config/radarr /mnt/jellyfin/config/sonarr \

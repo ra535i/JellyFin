@@ -92,19 +92,20 @@ for sub in "${SUBDOMAINS[@]}"; do
         >/dev/null 2>&1 && echo "  $sub.$DOMAIN -> tunnel" || echo "  $sub.$DOMAIN SKIP (may exist)"
 done
 
-# ===== Systemd service (user-level) =====
+# ===== Systemd service (system-level) =====
 echo "═══ SYSTEMD ═══"
-cp "$REPO/cloudflare/cloudflared.service" ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable cloudflared.service
-systemctl --user restart cloudflared.service
-
-# Enable linger so user services start at boot
-loginctl enable-linger "$(whoami)" 2>/dev/null || true
+# Sync binary to system path so root can execute it
+sudo cp ~/.local/bin/cloudflared /usr/local/bin/cloudflared
+sudo chmod 755 /usr/local/bin/cloudflared
+# Install system-level service
+sudo cp "$REPO/cloudflare/cloudflared.service" /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable cloudflared.service
+sudo systemctl restart cloudflared.service
 
 echo "═══ VERIFY ═══"
 sleep 3
-systemctl --user is-active cloudflared.service && echo "✅ Tunnel running" || echo "❌ Tunnel failed"
+sudo systemctl is-active cloudflared.service && echo "✅ Tunnel running" || echo "❌ Tunnel failed"
 
 echo "═══ DONE ═══"
 echo "Next: run cloudflare/setup_access.sh to add Cloudflare Access gates for admin services."

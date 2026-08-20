@@ -5,12 +5,10 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=%i
-ExecStart=%h/.local/bin/cloudflared tunnel --config %h/.cloudflared/config.yml run
+User=skim
+ExecStart=/usr/local/bin/cloudflared tunnel --config /home/skim/.cloudflared/config.yml run
 Restart=on-failure
 RestartSec=10
-StandardOutput=journal
-StandardError=journal
 
 [Install]
 WantedBy=multi-user.target

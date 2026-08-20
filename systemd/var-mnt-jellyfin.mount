@@ -1,0 +1,12 @@
+[Unit]
+Description=Jellyfin SSD (465GB)
+Before=local-fs.target
+
+[Mount]
+What=/dev/disk/by-uuid/9cdfea3c-e6bb-41a8-928b-583f3051d7bf
+Where=/var/mnt/jellyfin
+Type=ext4
+Options=defaults
+
+[Install]
+WantedBy=local-fs.target

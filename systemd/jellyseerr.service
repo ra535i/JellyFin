@@ -1,8 +1,8 @@
 [Unit]
 Description=Jellyseerr - Family request UI
-After=network-online.target jellyfin.service
-Wants=network-online.target
-RequiresMountsFor=/mnt/jellyfin/config/jellyseerr
+After=network-online.target var-mnt-jellyfin.mount
+Wants=network-online.target var-mnt-jellyfin.mount
+RequiresMountsFor=/var/mnt/jellyfin
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f jellyseerr
@@ -11,11 +11,10 @@ ExecStart=/usr/bin/podman run --name jellyseerr --rm \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/jellyseerr:/config \
+  -v /mnt/jellyfin/config/jellyseerr:/app/config \
   docker.io/fallenbagel/jellyseerr:latest
 Restart=on-failure
 RestartSec=10
-ExecStop=/usr/bin/podman stop -t 30 jellyseerr
 
 [Install]
 WantedBy=multi-user.target

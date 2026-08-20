@@ -12,7 +12,6 @@ ExecStart=/usr/bin/podman run --name sabnzbd --rm \
   -e PGID=1000 \
   -e TZ=America/New_York \
   -v /mnt/jellyfin/config/sabnzbd:/config \
-  -v /mnt/jellyfin/config/sabnzbd/scripts:/scripts \
   -v /mnt/media/downloads:/downloads \
   docker.io/linuxserver/sabnzbd:latest
 Restart=on-failure

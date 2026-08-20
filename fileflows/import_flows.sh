@@ -22,19 +22,20 @@ echo "═══ FileFlows: importing flows from $FLOW_DIR ═══"
 
 for f in "$FLOW_DIR"/*.json; do
   name=$(basename "$f" .json | sed 's/_/ /g')
-  json_str=$(python3 -c "import json; s=open('$f').read(); print(json.dumps(s))")
-  result=$(curl -sS -X POST -H 'Content-Type: application/json' \
-    --data-binary "$json_str" "$FF_BASE/api/flow/import" 2>/dev/null || echo '{"Name":"HTTP_FAIL"}')
-  imported=$(echo "$result" | python3 -c "
-import sys, json
-try:
-    d = json.load(sys.stdin)
-    print(d.get('Name', 'PARSE_FAIL'))
-except Exception:
-    print('PARSE_FAIL')
-" 2>/dev/null || echo "FAILED")
-  echo "  $name -> $imported"
+  echo "  Importing $name..."
+
+  # PUT the flow JSON directly to /api/flow
+  # This requires the flow JSON to have a valid Uuid field
+  json_str=$(cat "$f")
+  result=$(curl -sS -o /dev/null -w "%{http_code}" -X PUT \
+    -H "Content-Type: application/json" \
+    --data-binary "$json_str" "$FF_BASE/api/flow" 2>/dev/null || echo "FAILED")
+
+  if [ "$result" = "200" ]; then
+    echo "    ✅ Imported: $name"
+  else
+    echo "    ⚠️  HTTP $result — may need manual import via UI (Flows → Import)"
+  fi
 done
 
 echo "═══ Import complete ═══"
-echo "Verify: curl -s $FF_BASE/api/flow | python3 -c \"import sys,json; [print(json.loads(l,strict=False)['Name']) for l in sys.stdin]\""
