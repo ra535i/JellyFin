@@ -1,0 +1,429 @@
+{
+  "Name": "20Mbps Bitrate",
+  "Type": 0,
+  "Revision": 5,
+  "Description": "compress for streaming",
+  "Icon": "fas fa-film",
+  "Properties": {
+    "Fields": [],
+    "Variables": {}
+  },
+  "Parts": [
+    {
+      "Uid": "4627b5c1-7675-47dd-9cc0-248b1363b524",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.VideoFile",
+      "xPos": 310,
+      "yPos": 30,
+      "Label": "Video File",
+      "Inputs": 0,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "b27cf578-d72d-4020-80ec-85b5dbe9d75f"
+        }
+      ],
+      "Type": 0
+    },
+    {
+      "Uid": "f93e9c54-8803-4741-b24a-f7ce5cfaced9",
+      "ReadOnly": false,
+      "FlowElementUid": "MetaNodes.TheMovieDb.MovieLookup",
+      "xPos": 300,
+      "yPos": 500,
+      "Label": "Movie Lookup",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c"
+        },
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c"
+        }
+      ],
+      "ErrorConnection": {
+        "Input": 1,
+        "Output": -1,
+        "InputNode": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c"
+      },
+      "Type": 3,
+      "Model": {
+        "UseFolderName": true
+      }
+    },
+    {
+      "Uid": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderStart",
+      "xPos": 300,
+      "yPos": 640,
+      "Label": "FFMPEG Builder: Start",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "9078d67d-5c17-406c-80dc-a7ec3f8b65f0"
+        }
+      ],
+      "Type": 4
+    },
+    {
+      "Uid": "9078d67d-5c17-406c-80dc-a7ec3f8b65f0",
+      "Name": "Remux to MKV",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderRemuxToMkv",
+      "xPos": 300,
+      "yPos": 780,
+      "Label": "FFMPEG Builder: Remux to MKV",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "c87be988-764d-470d-b00f-17e6a0ad2cce"
+        }
+      ],
+      "Type": 6
+    },
+    {
+      "Uid": "c87be988-764d-470d-b00f-17e6a0ad2cce",
+      "Name": "HEVC",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderVideoEncodeSimple",
+      "xPos": 300,
+      "yPos": 920,
+      "Label": "FFMPEG Builder: Video Encode",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "f2194104-805a-473b-b4cb-edd4aa4ca2a4"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "Codec": "h265",
+        "Encoder": "VAAPI",
+        "Quality": 6,
+        "Speed": 3
+      }
+    },
+    {
+      "Uid": "f2194104-805a-473b-b4cb-edd4aa4ca2a4",
+      "Name": "Remove Unwanted Subtitle Languages",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FFmpegBuilderLanguageRemover",
+      "xPos": 300,
+      "yPos": 1060,
+      "Label": "FFMPEG Builder: Language Remover",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "24024dba-9bb8-4014-bc66-185e8a9ec3dc"
+        },
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "24024dba-9bb8-4014-bc66-185e8a9ec3dc"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "StreamType": "Subtitle",
+        "Languages": [
+          "eng"
+        ],
+        "NotMatching": true
+      }
+    },
+    {
+      "Uid": "24024dba-9bb8-4014-bc66-185e8a9ec3dc",
+      "Name": "Default Language to 'eng'",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioSetLanguage",
+      "xPos": 300,
+      "yPos": 1200,
+      "Label": "FFMPEG Builder: Set Language",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "48d73d4d-3faa-443f-8c42-9403d6c6759c"
+        },
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "48d73d4d-3faa-443f-8c42-9403d6c6759c"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "StreamType": "Both",
+        "Language": "eng"
+      }
+    },
+    {
+      "Uid": "48d73d4d-3faa-443f-8c42-9403d6c6759c",
+      "Name": "Primary Audio",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioLanguageConverter",
+      "xPos": 660,
+      "yPos": 360,
+      "Label": "FFMPEG Builder: Audio Language Converter",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "49758c1b-810f-4d6b-aadd-91a546e0a838"
+        },
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "f11e3e1d-17a6-4caf-93c2-fa12d615b3a2"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "Languages": [
+          "eng",
+          "orig",
+          "kor",
+          "jpn",
+          "zho",
+          "zht",
+          "tha"
+        ],
+        "RemoveOthers": true,
+        "Codec": "ac3",
+        "Channels": 6,
+        "Bitrate": 1
+      }
+    },
+    {
+      "Uid": "49758c1b-810f-4d6b-aadd-91a546e0a838",
+      "Name": "Fall Back Audio",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioLanguageConverter",
+      "xPos": 780,
+      "yPos": 500,
+      "Label": "FFMPEG Builder: Audio Language Converter",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "f0675233-2151-4b24-8318-4a5825b561d5"
+        },
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "f11e3e1d-17a6-4caf-93c2-fa12d615b3a2"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "Languages": [
+          "eng",
+          "orig",
+          "kor",
+          "jpn",
+          "zho",
+          "zht",
+          "tha"
+        ],
+        "Codec": "ac3",
+        "Channels": 0,
+        "Bitrate": 1
+      }
+    },
+    {
+      "Uid": "f0675233-2151-4b24-8318-4a5825b561d5",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.BasicNodes.Functions.FailFlow",
+      "xPos": 900,
+      "yPos": 640,
+      "Label": "Fail Flow",
+      "Inputs": 1,
+      "Outputs": 0,
+      "OutputConnections": [],
+      "Type": 3,
+      "Model": {
+        "Reason": "Failed to find any wanted audio languages."
+      }
+    },
+    {
+      "Uid": "f11e3e1d-17a6-4caf-93c2-fa12d615b3a2",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderExecutor",
+      "xPos": 660,
+      "yPos": 780,
+      "Label": "FFMPEG Builder: Executor",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "cf533a35-013c-4aa7-bb41-e2fe7be3da97"
+        }
+      ],
+      "ErrorConnection": {
+        "Input": 1,
+        "Output": -1,
+        "InputNode": "acd29152-e1f0-4e43-9268-9cf1a321c089"
+      },
+      "Type": 5,
+      "Model": {
+        "HardwareDecoding": "auto",
+        "Strictness": "experimental"
+      }
+    },
+    {
+      "Uid": "cf533a35-013c-4aa7-bb41-e2fe7be3da97",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.BasicNodes.File.ReplaceOriginal",
+      "xPos": 1140,
+      "yPos": 1060,
+      "Label": "Replace Original",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [],
+      "Type": 2
+    },
+    {
+      "Uid": "acd29152-e1f0-4e43-9268-9cf1a321c089",
+      "Name": "CPU Fail-over Encode",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderVideoEncodeSimple",
+      "xPos": 1140,
+      "yPos": 360,
+      "Label": "FFMPEG Builder: Video Encode",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "e917016a-8bb8-4d47-a384-0c24f21e56f6"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "Codec": "h265",
+        "Encoder": "CPU",
+        "Quality": 6,
+        "Speed": 3
+      }
+    },
+    {
+      "Uid": "e917016a-8bb8-4d47-a384-0c24f21e56f6",
+      "Name": "CPU Fail-over Executor",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderExecutor",
+      "xPos": 1140,
+      "yPos": 500,
+      "Label": "FFMPEG Builder: Executor",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "cf533a35-013c-4aa7-bb41-e2fe7be3da97"
+        }
+      ],
+      "Type": 5,
+      "Model": {
+        "HardwareDecoding": false,
+        "Strictness": "experimental"
+      }
+    },
+    {
+      "Uid": "b27cf578-d72d-4020-80ec-85b5dbe9d75f",
+      "Name": "Bitrate greater than 20Mbps",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.VideoBitrateGreaterThan",
+      "xPos": 270,
+      "yPos": 140,
+      "Label": "Video Bitrate Greater Than",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "f93e9c54-8803-4741-b24a-f7ce5cfaced9"
+        },
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "927f0c18-7010-46d6-b19f-7ba768224d34"
+        }
+      ],
+      "Type": 3,
+      "Model": {
+        "Bitrate": 20000,
+        "Color": ""
+      }
+    },
+    {
+      "Uid": "927f0c18-7010-46d6-b19f-7ba768224d34",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.AudioNodes.AudioIsCodec",
+      "xPos": 80,
+      "yPos": 500,
+      "Label": "Audio Is Codec",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "1a70964b-2238-423b-8bb0-e0967b6d6dbf"
+        }
+      ],
+      "Type": 3,
+      "Model": {
+        "Codec": "truehd"
+      }
+    },
+    {
+      "Uid": "1a70964b-2238-423b-8bb0-e0967b6d6dbf",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderStart",
+      "xPos": 80,
+      "yPos": 640,
+      "Label": "FFMPEG Builder: Start",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "f2194104-805a-473b-b4cb-edd4aa4ca2a4"
+        }
+      ],
+      "Type": 4
+    }
+  ]
+}

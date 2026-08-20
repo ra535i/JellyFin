@@ -170,17 +170,24 @@ can connect without authentication.
   `--network host` like everything else, no port mapping is needed.
 - All other services use `--network host` — no port mapping needed in docker args.
 
-## FileFlows Flow
+## FileFlows Flows
 
-The flow "20Mbps Bitrate" does:
-```
-Video File → FFMPEG Builder Start → Video Encode (hevc_vaapi, 20Mbps)
-→ Audio Remux (passthrough/copy) → Executor (HW decode auto) → Replace Original
-```
+Pre-built flow definitions are stored in `fileflows/flows/` and automatically
+imported by `install_arr_stack.sh` after the FileFlows container starts.
 
-Files are detected by extension (`.mkv`, `.mp4`, `.m4v`, `.avi`) and the library
-scans `/media/movies` recursively. Libraries must be created through the FileFlows UI,
-not the database.
+| Flow file | Purpose |
+|-----------|---------|
+| `20Mbps_Bitrate.json` | Original production — HEVC VAAPI, audio passthrough |
+| `20Mbps_Bitrate_V2___Bitrate_Encode.json` | Target — HEVC VAAPI/CPU, AC3+TrueHD, **18.5 Mbps bitrate encode** |
+| `20Mbps_Bitrate_V2___Optimized_VMAF.json` | Alternative — VMAF-optimized with 20 Mbps ceiling per resolution |
+
+To re-import manually after a rebuild:
+
+```bash
+podman cp /home/skim/JellyFin/fileflows/flows fileflows:/tmp/flows
+podman cp /home/skim/JellyFin/fileflows/import_flows.sh fileflows:/tmp/
+podman exec fileflows bash /tmp/import_flows.sh
+```
 
 ## Rebuilding from total disaster
 

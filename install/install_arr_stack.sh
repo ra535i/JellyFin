@@ -3,7 +3,7 @@
 # RUN AS ROOT:  sudo bash install/install_arr_stack.sh
 #
 # Installs the full Arr stack as systemd-managed podman containers:
-#   SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Jellyseerr
+#   SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Jellyseerr, FileFlows
 # (Jellyfin is installed separately by install/install_jellyfin.sh)
 #
 # Idempotent: safe to re-run. Survives reboots (all units enabled).
@@ -61,6 +61,22 @@ for svc in "${SERVICES[@]}"; do
     code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$port/" 2>/dev/null || echo "000")
     echo "  $svc -> http://127.0.0.1:$port  (HTTP $code)"
 done
+
+# --- Import FileFlows flows ------------------------------------------------
+echo; echo "═══ FILEFLOWS: IMPORTING FLOWS ═══"
+FLOW_DIR="$REPO/fileflows/flows"
+IMPORT_SCRIPT="$REPO/fileflows/import_flows.sh"
+if [ -d "$FLOW_DIR" ] && ls "$FLOW_DIR"/*.json &>/dev/null; then
+    podman cp "$FLOW_DIR" fileflows:/tmp/flows
+    podman cp "$IMPORT_SCRIPT" fileflows:/tmp/import_flows.sh
+    if podman exec fileflows bash /tmp/import_flows.sh; then
+        echo "  flows imported"
+    else
+        echo "  WARN: flow import had errors (FileFlows may not be ready)"
+    fi
+else
+    echo "  (no flow files at $FLOW_DIR — skipping)"
+fi
 
 echo; echo "═══ DON'T FORGET ═══"
 echo "After first boot of each UI, complete setup, then wire them together:"
