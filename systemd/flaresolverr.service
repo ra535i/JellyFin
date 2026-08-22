@@ -1,0 +1,25 @@
+[Unit]
+Description=Flaresolverr - Cloudflare bypass proxy
+After=network-online.target var-mnt-jellyfin.mount
+Wants=network-online.target var-mnt-jellyfin.mount
+RequiresMountsFor=/var/mnt/jellyfin
+
+[Service]
+User=skim
+Group=skim
+ExecStartPre=-/usr/bin/podman rm -f flaresolverr
+ExecStart=/usr/bin/podman run --name flaresolverr --replace \
+  --network host \
+  -e LOG_LEVEL=info \
+  -e CAPTCHA_SOLVER=none \
+  -e TZ=America/New_York \
+  docker.io/flaresolverr/flaresolverr:latest
+ExecStop=/usr/bin/podman stop -t 10 flaresolverr
+ExecStopPost=-/usr/bin/podman rm -f flaresolverr
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

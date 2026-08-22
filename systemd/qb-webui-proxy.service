@@ -1,0 +1,14 @@
+[Unit]
+Description=qBittorrent Web UI proxy - exposes port 18080 to host
+After=gluetun.service qbittorrent.service
+Wants=gluetun.service qbittorrent.service
+
+[Service]
+ExecStartPre=/usr/bin/bash -c '/usr/bin/pkill -f "socat.*18080" 2>/dev/null || true'
+ExecStart=/usr/bin/socat TCP-LISTEN:18080,reuseaddr,fork TCP:127.0.0.1:8080
+Restart=on-failure
+RestartSec=5
+ExecStop=/usr/bin/pkill -f "socat.*18080" 2>/dev/null || true
+
+[Install]
+WantedBy=multi-user.target

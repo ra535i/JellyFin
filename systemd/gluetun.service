@@ -1,0 +1,29 @@
+[Unit]
+Description=Gluetun - VPN tunnel for torrent traffic
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/jellyfin/config/gluetun
+
+[Service]
+ExecStartPre=/usr/bin/podman rm -f gluetun
+ExecStart=/usr/bin/podman run --name gluetun --rm \
+  --cap-add NET_ADMIN \
+  --device /dev/net/tun \
+  -p 127.0.0.1:1080:1080 \
+  -p 127.0.0.1:8888:8888 \
+  -e VPN_SERVICE_PROVIDER=nordvpn \
+  -e VPN_TYPE=openvpn \
+  -e OPENVPN_USER=T2yuUAvMNzJuASSZAafULrnw \
+  -e OPENVPN_PASSWORD=SK9K2sknsmp4Z4W7PhmunaXh \
+  -e SERVER_REGIONS=United_States \
+  -e TZ=America/New_York \
+  -e HTTPPROXY=on \
+  -e SOCKS5_ENABLED=on \
+  -v /mnt/jellyfin/config/gluetun:/gluetun \
+  docker.io/qmcgaw/gluetun:latest
+Restart=on-failure
+RestartSec=10
+ExecStop=/usr/bin/podman stop -t 30 gluetun
+
+[Install]
+WantedBy=multi-user.target
