@@ -1,13 +1,19 @@
 [Unit]
 Description=mergerfs - pool of media drives
-After=local-fs.target
-RequiresMountsFor=/mnt/pool1 /mnt/pool2 /mnt/pool3
+Requires=var-mnt-pool1.mount var-mnt-pool2.mount var-mnt-pool3.mount
+After=var-mnt-pool1.mount var-mnt-pool2.mount var-mnt-pool3.mount
+Before=jellyfin.service sonarr.service radarr.service sabnzbd.service bazarr.service qbittorrent.service
 
 [Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/local/bin/mergerfs -o defaults,allow_other,use_ino,hard_remove,dropcacheonclose=true,category.create=mfs,cache.files=partial,moveonenospc=true /mnt/pool1:/mnt/pool2:/mnt/pool3 /mnt/media
-ExecStop=/usr/bin/fusermount3 -u /mnt/media
+Type=simple
+ExecStartPre=/usr/bin/mountpoint -q /var/mnt/pool1
+ExecStartPre=/usr/bin/mountpoint -q /var/mnt/pool2
+ExecStartPre=/usr/bin/mountpoint -q /var/mnt/pool3
+ExecStart=/usr/local/bin/mergerfs -f -o defaults,allow_other,cache.files=off,dropcacheonclose=false,category.create=pfrd,func.getattr=newest,minfreespace=100G,moveonenospc=pfrd,inodecalc=hybrid-hash,statfs=base,fsname=mergerfs-media /var/mnt/pool1:/var/mnt/pool2:/var/mnt/pool3 /var/mnt/media
+ExecStop=/usr/bin/umount /var/mnt/media
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=60
 TimeoutStopSec=30
 
 [Install]

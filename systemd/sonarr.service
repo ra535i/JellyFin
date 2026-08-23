@@ -2,7 +2,7 @@
 Description=Sonarr - TV automation
 After=network-online.target
 Wants=network-online.target
-RequiresMountsFor=/mnt/jellyfin/config/sonarr /mnt/media/downloads /mnt/media/tv
+RequiresMountsFor=/home/skim/jellyfin-configs/sonarr /mnt/media/downloads /mnt/media/tv
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f sonarr
@@ -11,7 +11,7 @@ ExecStart=/usr/bin/podman run --name sonarr --rm \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/sonarr:/config \
+  -v /home/skim/jellyfin-configs/sonarr:/config \
   -v /mnt/media/tv:/tv:rw \
   -v /mnt/media/downloads:/downloads:rw \
   docker.io/linuxserver/sonarr:latest

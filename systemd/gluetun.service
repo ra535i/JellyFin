@@ -2,7 +2,7 @@
 Description=Gluetun - VPN tunnel for torrent traffic
 After=network-online.target
 Wants=network-online.target
-RequiresMountsFor=/mnt/jellyfin/config/gluetun
+RequiresMountsFor=/home/skim/jellyfin-configs/gluetun
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f gluetun
@@ -19,7 +19,7 @@ ExecStart=/usr/bin/podman run --name gluetun --rm \
   -e TZ=America/New_York \
   -e HTTPPROXY=on \
   -e SOCKS5_ENABLED=on \
-  -v /mnt/jellyfin/config/gluetun:/gluetun \
+  -v /home/skim/jellyfin-configs/gluetun:/gluetun \
   docker.io/qmcgaw/gluetun:latest
 Restart=on-failure
 RestartSec=10

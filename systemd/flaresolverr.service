@@ -1,8 +1,7 @@
 [Unit]
 Description=Flaresolverr - Cloudflare bypass proxy
-After=network-online.target var-mnt-jellyfin.mount
-Wants=network-online.target var-mnt-jellyfin.mount
-RequiresMountsFor=/var/mnt/jellyfin
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 User=skim

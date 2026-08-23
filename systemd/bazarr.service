@@ -2,7 +2,7 @@
 Description=Bazarr - Subtitle automation
 After=network-online.target
 Wants=network-online.target
-RequiresMountsFor=/mnt/jellyfin/config/bazarr /mnt/media/movies /mnt/media/tv
+RequiresMountsFor=/home/skim/jellyfin-configs/bazarr /mnt/media/movies /mnt/media/tv
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f bazarr
@@ -11,7 +11,7 @@ ExecStart=/usr/bin/podman run --name bazarr --rm \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/bazarr:/config \
+  -v /home/skim/jellyfin-configs/bazarr:/config \
   -v /mnt/media/movies:/movies:rw \
   -v /mnt/media/tv:/tv:rw \
   docker.io/linuxserver/bazarr:latest

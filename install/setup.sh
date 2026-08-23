@@ -3,7 +3,7 @@
 # RUN AS ROOT:  sudo bash install/setup.sh
 #
 # Full setup from a fresh-ish state:
-#   1. Mount the jellyfin config drive (var-mnt-jellyfin.mount)
+#   1. Prepare local NVMe application state and SELinux labels
 #   2. Install mergerfs (pool the USB media drives)
 #   3. Install Jellyfin
 #   4. Install the Arr stack (SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Jellyseerr, FileFlows)
@@ -19,21 +19,19 @@ echo "════════════════════════�
 echo "  MEDIA SERVER MASTER SETUP"
 echo "════════════════════════════════════════════"
 
-# 0. Mount jellyfin config drive
-echo; echo "═══ 0. CONFIG DRIVE ═══"
-if ! mountpoint -q /var/mnt/jellyfin; then
-    if [ -f /etc/systemd/system/var-mnt-jellyfin.mount ]; then
-        systemctl enable var-mnt-jellyfin.mount
-        systemctl start var-mnt-jellyfin.mount
-        echo "var-mnt-jellyfin.mount enabled + started"
-    else
-        echo "ERROR: var-mnt-jellyfin.mount not found at /etc/systemd/system/"
-        echo "Install it: cp systemd/var-mnt-jellyfin.mount /etc/systemd/system/ && systemctl daemon-reload"
-        exit 1
-    fi
-else
-    echo "Config drive already mounted"
+# 0. Prepare local NVMe app state
+echo; echo "═══ 0. LOCAL CONFIG STORAGE ═══"
+mkdir -p /home/skim/jellyfin-configs
+chown -R 1000:1000 /home/skim/jellyfin-configs
+chmod 711 /home/skim
+if command -v semanage &>/dev/null; then
+    semanage fcontext -a -t container_file_t \
+      '/var/home/skim/jellyfin-configs(/.*)?' 2>/dev/null || \
+    semanage fcontext -m -t container_file_t \
+      '/var/home/skim/jellyfin-configs(/.*)?'
+    restorecon -RF /var/home/skim/jellyfin-configs
 fi
+echo "Local config storage ready"
 
 if ! mountpoint -q /mnt/media; then
     echo "WARN: /mnt/media not mounted yet. mergerfs install will handle this."
@@ -68,10 +66,12 @@ bash "$REPO/install/install_arr_stack.sh"
 
 # 5. Verify all
 echo; echo "═══ VERIFY ═══"
-for svc in var-mnt-jellyfin.mount mergerfs jellyfin sabnzbd prowlarr radarr sonarr bazarr jellyseerr fileflows; do
+for svc in mergerfs jellyfin sabnzbd prowlarr radarr sonarr bazarr jellyseerr; do
     state=$(systemctl is-active "$svc" 2>/dev/null || echo "dead")
     printf "  %-20s %s\n" "$svc:" "$state"
 done
+printf "  %-20s %s\n" "fileflows:" \
+  "$(runuser -u skim -- env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user is-active fileflows 2>/dev/null || echo dead)"
 
 echo; echo "════════════════════════════════════════════"
 echo "  SETUP COMPLETE"

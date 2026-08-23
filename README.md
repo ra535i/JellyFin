@@ -11,22 +11,21 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │ USB Drives                                                            │
-│  sda1 (2.7T)  sdb1 (2.7T)  sdc1 (2.7T)                              │
-│      └── mergerfs pool ─── /mnt/media (8.1T) ─── sdd1 (500GB SSD)    │
-│                                    │                    │             │
-│                            ┌───────┴────────┐        /var/mnt/jellyfin│
-│                            │                │    (systemd .mount unit) │
-│                       movies/            tv/    ┌── config/ ─────────┐│
-│                         │                │      │  jellyfin          ││
-│                         │                │      │  sabnzbd           ││
-│                         │                │      │  prowlarr          ││
-│  Radarr ──▶ Sonarr ──▶ Prowlarr ──▶ SABnzbd ── downloads/          ││
-│                                            │      │  radarr           ││
-│               FileFlows ── (transcode pipeline)   │  sonarr           ││
-│     REMUX ─▶ HEVC VAAPI ─▶ 20Mbps Bitrate        │  bazarr           ││
-│     VAAPI fail ──▶ CPU fallback                   │  jellyseerr      ││
-│                    │                              │  fileflows       ││
-│  Jellyfin (streaming) ◀── Jellyseerr (requests)   └───────────────────┘│
+│  3x 2.7T ext4 (UUID-mounted)                                           │
+│      └── mergerfs pool ─── /mnt/media (8.1T)                           │
+│                            ┌───────┴────────┐                           │
+│                       movies/            tv/                           │
+│                         │                │                             │
+│  Radarr ──▶ Sonarr ──▶ Prowlarr ──▶ SABnzbd ── downloads/            │
+│                                            │                           │
+│               FileFlows ── (transcode pipeline)                       │
+│     REMUX ─▶ HEVC VAAPI ─▶ 20Mbps Bitrate                            │
+│     VAAPI fail ──▶ CPU fallback                                       │
+│                    │                                                   │
+│ Internal NVMe ── /home/skim/jellyfin-configs/                        │
+│                    └── all app configs, databases, cache, metadata     │
+│                                                                        │
+│  Jellyfin (streaming) ◀── Jellyseerr (requests)                       │
 │                    │                                                    │
 │               Cloudflare Tunnel ─── suvannmedia.com                    │
 │                  ├── jellyfin.suvannmedia.com   (OPEN — mobile apps)    │
@@ -55,7 +54,8 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 
 > **Jellyseerr gotcha:** Jellyseerr expects its config mounted at **`/app/config`**,
 > NOT `/config`. Mounting to the wrong path causes the first-boot setup wizard to
-> loop. The correct unit mount is `-v /mnt/jellyfin/config/jellyseerr:/app/config`.
+> loop. The correct unit mount is
+> `-v /home/skim/jellyfin-configs/jellyseerr:/app/config`.
 
 > **All services** use `--network host` — no port mapping needed.
 > All run as `User=1000:1000` (container UID is `1000:1000`).
@@ -64,49 +64,60 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 
 ## Disk Layout
 
-| Drive     | Size  | Mount                     | Purpose                        |
-|-----------|-------|---------------------------|--------------------------------|
-| sdd1      | 465GB | `/var/mnt/jellyfin`       | Configs, cache, metadata       |
-| sda1/sdb1/sdc1 | 8.1T | `/mnt/media` (mergerfs) | Movies, TV, downloads          |
+| Storage | Mount/path | Purpose |
+|---------|------------|---------|
+| Internal NVMe | `/home/skim/jellyfin-configs` | App configs, databases, cache, metadata |
+| 3x 2.7T ext4 USB drives | `/mnt/media` (mergerfs) | Movies, TV, downloads, FileFlows work |
 
-### SSD mount via systemd (not fstab)
+### Configs on internal NVMe
 
-The config SSD mounts at `/var/mnt/jellyfin` (canonical path) via a systemd
-mount unit, NOT fstab. This ensures the mount is ready before any container
-starts. All 9 service units include `RequiresMountsFor=/var/mnt/jellyfin`.
+All application state lives at `/home/skim/jellyfin-configs/` (canonical
+Bazzite path: `/var/home/skim/jellyfin-configs/`). This prevents a USB
+enclosure disconnect from taking every application database down with it.
 
-The symlink `/mnt/jellyfin -> /var/mnt/jellyfin` exists for compatibility
-but the canonical path is `/var/mnt/jellyfin`.
+Rootful Podman containers need both path traversal and a persistent SELinux
+container label:
 
-```ini
-# /etc/systemd/system/var-mnt-jellyfin.mount
-[Unit]
-Description=Jellyfin SSD (465GB)
-Before=local-fs.target
-
-[Mount]
-What=/dev/disk/by-uuid/9cdfea3c-e6bb-41a8-928b-583f3051d7bf
-Where=/var/mnt/jellyfin
-Type=ext4
-Options=defaults
-
-[Install]
-WantedBy=local-fs.target
+```bash
+sudo chmod 711 /home/skim
+sudo semanage fcontext -a -t container_file_t \
+  '/var/home/skim/jellyfin-configs(/.*)?'
+sudo restorecon -RF /var/home/skim/jellyfin-configs
 ```
 
-> **Why `Before=local-fs.target`?** Avoids an ordering cycle with systemd's
-> internal dependency graph. The unit works correctly once loaded via
-> `systemctl daemon-reload && systemctl enable --now var-mnt-jellyfin.mount`.
+Do not put Jellyfin or Arr SQLite databases back on mergerfs. The old
+`var-mnt-jellyfin.mount` unit is retained only as migration history and is not
+a dependency of the current services.
 
 ### Mergerfs pool
 
-Three USB drives pooled via mergerfs (static binary, no rpm-ostree layering):
+Three UUID-mounted ext4 USB drives are pooled by mergerfs 2.42.0. The unit
+fails closed unless all three canonical branch mounts exist, then supervises
+the mergerfs process directly:
 
 ```ini
-# /etc/systemd/system/mergerfs.service
+# systemd/mergerfs.service (abbreviated)
+[Unit]
+Requires=var-mnt-pool1.mount var-mnt-pool2.mount var-mnt-pool3.mount
+After=var-mnt-pool1.mount var-mnt-pool2.mount var-mnt-pool3.mount
+
 [Service]
-ExecStart=/usr/local/bin/mergerfs -o defaults,allow_other,use_ino,hard_remove,dropcacheonclose=true,category.create=mfs,cache.files=partial,moveonenospc=true /mnt/pool1:/mnt/pool2:/mnt/pool3 /mnt/media
+Type=simple
+ExecStart=/usr/local/bin/mergerfs -f -o defaults,allow_other,cache.files=off,dropcacheonclose=false,category.create=pfrd,func.getattr=newest,minfreespace=100G,moveonenospc=pfrd,inodecalc=hybrid-hash,statfs=base,fsname=mergerfs-media /var/mnt/pool1:/var/mnt/pool2:/var/mnt/pool3 /var/mnt/media
+ExecStop=/usr/bin/umount /var/mnt/media
 ```
+
+Important choices:
+
+- `pfrd` spreads new files across disks weighted by free space instead of
+  repeatedly hammering the currently emptiest disk.
+- `minfreespace=100G` reserves room for large remuxes/unpack operations.
+- `cache.files=off` and `dropcacheonclose=false` follow current upstream
+  guidance for Linux 6.6+ and mergerfs 2.41+.
+- Legacy `use_ino`, `hard_remove`, `cache.files=partial`, and boolean
+  `moveonenospc=true` options were removed.
+- mergerfs does not provide parity, checksums, healing, or protection from a
+  USB bridge/power failure. RAID and mergerfs are not backups.
 
 Installed via `install/install_mergerfs.sh` which downloads the static binary
 from GitHub releases (no rpm-ostree layer needed on immutable Fedora).
@@ -115,7 +126,7 @@ from GitHub releases (no rpm-ostree layer needed on immutable Fedora).
 
 Before you start, you'll need:
 
-1. **Hardware** — 3x USB drives (pool), 1x SSD (config)
+1. **Hardware** — 3x USB drives (pool), internal NVMe for application state
 2. **Domain** — registered at Cloudflare ($8–12/yr)
 3. **Usenet provider** — Frugal Usenet (~$5/mo)
 4. **Indexer** — NZBGeek (~$10/yr)
@@ -129,10 +140,12 @@ sudo dnf install -y git podman
 git clone https://github.com/ra535i/JellyFin.git /opt/jellyfin
 cd /opt/jellyfin
 
-# 2. Mount the config SSD via systemd unit
-sudo cp systemd/var-mnt-jellyfin.mount /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now var-mnt-jellyfin.mount
+# 2. Prepare local application state with persistent SELinux labels
+mkdir -p /home/skim/jellyfin-configs
+sudo chmod 711 /home/skim
+sudo semanage fcontext -a -t container_file_t \
+  '/var/home/skim/jellyfin-configs(/.*)?'
+sudo restorecon -RF /var/home/skim/jellyfin-configs
 
 # 3. Install mergerfs pool (static binary, no rpm-ostree)
 sudo bash install/install_mergerfs.sh
@@ -148,12 +161,12 @@ podman rm -f ff-builder
 sudo bash install/setup.sh
 ```
 
-Your existing configs on `/var/mnt/jellyfin/config/` are preserved — all apps
+Existing configs under `/home/skim/jellyfin-configs/` are preserved — all apps
 come back with their same settings, users, libraries, and API keys.
 
 ## First-time setup (from scratch, no configs)
 
-If `/var/mnt/jellyfin/config/` is empty (truly fresh build).
+If `/home/skim/jellyfin-configs/` is empty (truly fresh build).
 
 ### Step 1: Apply SABnzbd tunnel fix
 
@@ -161,7 +174,7 @@ SABnzbd blocks external access by default. Since it's behind Cloudflare Tunnel,
 the requests appear to come from Cloudflare's IPs. Edit the config:
 
 ```ini
-# /var/mnt/jellyfin/config/sabnzbd/sabnzbd.ini
+# /home/skim/jellyfin-configs/sabnzbd/sabnzbd.ini
 host_whitelist = bazzite, sabnzbd.suvannmedia.com
 local_ranges = 0.0.0.0/0
 port = 8085
@@ -329,11 +342,15 @@ podman exec fileflows bash /tmp/import_flows.sh
 
 ## Systemd Service Files
 
-All service files live in `systemd/` and are deployed to `/etc/systemd/system/`.
+System service files live in `systemd/` and are deployed to
+`/etc/systemd/system/`. FileFlows is the exception: its working deployment is
+the **user** unit at `~/.config/systemd/user/fileflows.service`, enabled with
+`loginctl enable-linger skim`. Keep the obsolete system-level FileFlows unit
+disabled so two containers cannot compete for port 5000.
 
 | File | Purpose |
 |------|---------|
-| `var-mnt-jellyfin.mount` | SSD mount unit (canonical path `/var/mnt/jellyfin`) |
+| `var-mnt-jellyfin.mount` | Legacy external config-drive unit (not used by current services) |
 | `mergerfs.service` | mergerfs pool from 3 USB drives |
 | `jellyfin.service` | Jellyfin media server |
 | `jellyseerr.service` | Jellyseerr request portal (**mounts to `/app/config`**) |
@@ -342,7 +359,7 @@ All service files live in `systemd/` and are deployed to `/etc/systemd/system/`.
 | `radarr.service` | Radarr movie automation |
 | `sonarr.service` | Sonarr TV automation |
 | `bazarr.service` | Bazarr subtitle automation |
-| `fileflows.service` | FileFlows media processing (**User=skim, TimeoutStartSec=300**) |
+| `fileflows.service` | FileFlows media processing (installed as a **user unit**) |
 | `cloudflared.service` | Cloudflare Tunnel (system-level, not user-level) |
 
 ### Key systemd quirks
@@ -352,6 +369,9 @@ All service files live in `systemd/` and are deployed to `/etc/systemd/system/`.
   this, systemd kills the startup after the default 90s timeout.
 - **FileFlows** runs as `User=skim` (not root) so `podman` can access the
   `localhost/fileflows-amd-vaapi:latest` image (local images owned by the user).
+- **Only the FileFlows user unit may be enabled.** Disable the obsolete system
+  unit with `sudo systemctl disable --now fileflows.service`; manage the working
+  one with `systemctl --user ...`.
 - **FileFlows** uses both `ExecStop` (`podman stop -t 10 fileflows`) and
   `ExecStopPost` (`podman rm -f fileflows`) instead of `--rm` because
   `User=skim` mode makes podman stop/rm tricky in the restart cycle.
@@ -387,7 +407,7 @@ Jellyseerr expects config at **`/app/config`** inside the container, NOT
 check that the systemd service mounts to `/app/config`:
 
 ```
--v /mnt/jellyfin/config/jellyseerr:/app/config
+-v /home/skim/jellyfin-configs/jellyseerr:/app/config
 ```
 
 ### FileFlows custom image + TimeoutStartSec
@@ -404,13 +424,13 @@ doesn't work as reliably for cleanup, so `ExecStop + ExecStopPost` are used
 explicitly.
 
 ### Power blip recovery
-After a sudden power loss, systemd services enter `failed` state and won't
-restart automatically (restart limit exhausted). Recovery:
+After a sudden power loss, a service that exhausted its restart limit may need
+its failure counter reset. Recovery:
 
 ```bash
-sudo systemctl reset-failed fileflows
-sudo systemctl restart fileflows
-# Repeat for any other failed services
+systemctl --user reset-failed fileflows
+systemctl --user restart fileflows
+sudo systemctl reset-failed
 sudo systemctl --failed
 ```
 

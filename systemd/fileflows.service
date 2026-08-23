@@ -1,8 +1,8 @@
 [Unit]
 Description=FileFlows - Media processing automation
-After=network-online.target var-mnt-jellyfin.mount
-Wants=network-online.target var-mnt-jellyfin.mount
-RequiresMountsFor=/var/mnt/jellyfin /var/mnt/media
+After=network-online.target mergerfs.service
+Wants=network-online.target mergerfs.service
+RequiresMountsFor=/mnt/media
 
 [Service]
 User=skim
@@ -14,9 +14,10 @@ ExecStart=/usr/bin/podman run --name fileflows --pull=never --replace \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/fileflows/Data:/app/Data \
-  -v /mnt/jellyfin/config/fileflows/logs:/app/Logs \
-  -v /mnt/jellyfin/config/fileflows/temp:/app/Temp \
+  -e DOCKER_MODS= \
+  -v /home/skim/jellyfin-configs/fileflows/Data:/app/Data \
+  -v /home/skim/jellyfin-configs/fileflows/logs:/app/Logs \
+  -v /home/skim/jellyfin-configs/fileflows/temp:/app/Temp \
   -v /mnt/media:/media:rw \
   -v /mnt/media/fileflows-working:/temp \
   localhost/fileflows-amd-vaapi:latest

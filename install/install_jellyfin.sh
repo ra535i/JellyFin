@@ -2,7 +2,7 @@
 # Jellyfin systemd service installer
 # RUN AS ROOT:  sudo bash install/install_jellyfin.sh
 # Installs Jellyfin as a systemd-managed podman container.
-# Requires: /mnt/media (mergerfs pool), /mnt/jellyfin (config drive)
+# Requires: /mnt/media (mergerfs pool); app state lives on local NVMe.
 
 set -euo pipefail
 
@@ -14,12 +14,20 @@ echo "═══ JELLYFIN INSTALL ═══"
 mkdir -p /mnt/media/movies /mnt/media/tv /mnt/media/music
 chown -R 1000:1000 /mnt/media 2>/dev/null || true
 
-# Config dirs (on 500GB)
-mkdir -p /mnt/jellyfin/config /mnt/jellyfin/cache /mnt/jellyfin/transcodes
+# Config/data/cache dirs on local NVMe
+CONFIG_ROOT=/home/skim/jellyfin-configs
+mkdir -p "$CONFIG_ROOT/config" "$CONFIG_ROOT/data" \
+         "$CONFIG_ROOT/cache" "$CONFIG_ROOT/data/transcodes"
+chown -R 1000:1000 "$CONFIG_ROOT"
 
 # SELinux fix (if needed)
-if command -v chcon &>/dev/null; then
-    chcon -Rt container_file_t /mnt/jellyfin/config /mnt/jellyfin/cache /mnt/jellyfin/transcodes 2>/dev/null || true
+if command -v semanage &>/dev/null; then
+    chmod 711 /home/skim
+    semanage fcontext -a -t container_file_t \
+      '/var/home/skim/jellyfin-configs(/.*)?' 2>/dev/null || \
+    semanage fcontext -m -t container_file_t \
+      '/var/home/skim/jellyfin-configs(/.*)?'
+    restorecon -RF /var/home/skim/jellyfin-configs
 fi
 
 # Copy systemd unit

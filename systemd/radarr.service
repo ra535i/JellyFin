@@ -2,7 +2,7 @@
 Description=Radarr - Movie automation
 After=network-online.target
 Wants=network-online.target
-RequiresMountsFor=/mnt/jellyfin/config/radarr /mnt/media/downloads /mnt/media/movies
+RequiresMountsFor=/home/skim/jellyfin-configs/radarr /mnt/media/downloads /mnt/media/movies
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f radarr
@@ -11,7 +11,7 @@ ExecStart=/usr/bin/podman run --name radarr --rm \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -v /mnt/jellyfin/config/radarr:/config \
+  -v /home/skim/jellyfin-configs/radarr:/config \
   -v /mnt/media/movies:/movies:rw \
   -v /mnt/media/downloads:/downloads:rw \
   docker.io/linuxserver/radarr:latest

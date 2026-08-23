@@ -1,94 +1,95 @@
 #!/bin/bash
 # media-server stack installer
-# RUN AS ROOT:  sudo bash install/install_arr_stack.sh
+# RUN AS ROOT: sudo bash install/install_arr_stack.sh
 #
-# Installs the full Arr stack as systemd-managed podman containers:
-#   SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Jellyseerr, FileFlows
-# (Jellyfin is installed separately by install/install_jellyfin.sh)
-#
-# Idempotent: safe to re-run. Survives reboots (all units enabled).
+# Installs the Arr services as root systemd-managed podman containers and
+# FileFlows as the skim user service. App state lives on local NVMe.
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SYSTEMD_DIR="$REPO/systemd"
+CONFIG_ROOT=/home/skim/jellyfin-configs
+SYSTEM_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr)
 
-SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr fileflows)
+user_systemctl() {
+    runuser -u skim -- env \
+      XDG_RUNTIME_DIR=/run/user/1000 \
+      DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
+      systemctl --user "$@"
+}
 
-# --- Preflight: mount points & images -------------------------------------
+# --- Preflight -------------------------------------------------------------
 echo "═══ PREFLIGHT ═══"
-
-# Verify jellyfin drive mount
-if ! mountpoint -q /var/mnt/jellyfin && ! mountpoint -q /mnt/jellyfin; then
-    echo "ERROR: /var/mnt/jellyfin not mounted. Run install/setup.sh first to mount the config drive." >&2
+mountpoint -q /mnt/media || {
+    echo "ERROR: /mnt/media is not mounted. Start mergerfs first." >&2
     exit 1
-fi
-for d in /mnt/media/downloads /mnt/media/movies /mnt/media/tv /mnt/media/fileflows-working \
-         /mnt/jellyfin/config/sabnzbd /mnt/jellyfin/config/prowlarr \
-         /mnt/jellyfin/config/radarr /mnt/jellyfin/config/sonarr \
-         /mnt/jellyfin/config/bazarr /mnt/jellyfin/config/jellyseerr \
-         /mnt/jellyfin/config/fileflows /mnt/jellyfin/config/fileflows/logs \
-         /mnt/jellyfin/config/fileflows/temp; do
+}
+
+for d in /mnt/media/downloads /mnt/media/movies /mnt/media/tv \
+         /mnt/media/fileflows-working \
+         "$CONFIG_ROOT/sabnzbd" "$CONFIG_ROOT/prowlarr" \
+         "$CONFIG_ROOT/radarr" "$CONFIG_ROOT/sonarr" \
+         "$CONFIG_ROOT/bazarr" "$CONFIG_ROOT/jellyseerr" \
+         "$CONFIG_ROOT/fileflows/Data" "$CONFIG_ROOT/fileflows/logs" \
+         "$CONFIG_ROOT/fileflows/temp"; do
     mkdir -p "$d"
 done
-echo "dirs ok"
+chown -R 1000:1000 "$CONFIG_ROOT"
+chmod 711 /home/skim
+if command -v semanage &>/dev/null; then
+    semanage fcontext -a -t container_file_t \
+      '/var/home/skim/jellyfin-configs(/.*)?' 2>/dev/null || \
+    semanage fcontext -m -t container_file_t \
+      '/var/home/skim/jellyfin-configs(/.*)?'
+    restorecon -RF /var/home/skim/jellyfin-configs
+fi
+echo "dirs and SELinux labels ok"
 
-# --- Install systemd units -------------------------------------------------
-echo; echo "═══ INSTALLING SYSTEMD UNITS ═══"
-for svc in "${SERVICES[@]}"; do
+# --- Install system units --------------------------------------------------
+echo; echo "═══ INSTALLING SYSTEM UNITS ═══"
+for svc in "${SYSTEM_SERVICES[@]}"; do
     cp "$SYSTEMD_DIR/$svc.service" /etc/systemd/system/
 done
 systemctl daemon-reload
-echo "units installed"
 
-# --- Enable + start --------------------------------------------------------
-echo; echo "═══ ENABLING (boot survival) ═══"
-for svc in "${SERVICES[@]}"; do
-    systemctl enable "$svc" >/dev/null 2>&1 && echo "enabled: $svc" || echo "enable-fail: $svc"
+for svc in "${SYSTEM_SERVICES[@]}"; do
+    systemctl enable "$svc" >/dev/null
+    systemctl restart "$svc"
 done
 
-echo; echo "═══ STARTING ═══"
-for svc in "${SERVICES[@]}"; do
-    systemctl restart "$svc" && echo "started: $svc" || echo "start-fail: $svc"
-done
+# --- Install FileFlows as the only enabled user unit -----------------------
+echo; echo "═══ INSTALLING FILEFLOWS USER UNIT ═══"
+systemctl disable --now fileflows.service 2>/dev/null || true
+install -d -o skim -g skim /home/skim/.config/systemd/user
+ln -sfn "$SYSTEMD_DIR/fileflows.service" \
+  /home/skim/.config/systemd/user/fileflows.service
+chown -h skim:skim /home/skim/.config/systemd/user/fileflows.service
+loginctl enable-linger skim
+user_systemctl daemon-reload
+user_systemctl enable fileflows >/dev/null
+user_systemctl restart fileflows
 
 # --- Verify ----------------------------------------------------------------
 echo; echo "═══ STATUS ═══"
-for svc in "${SERVICES[@]}"; do
-    state=$(systemctl is-active "$svc")
-    enabled=$(systemctl is-enabled "$svc")
-    printf "%-14s active=%-8s enabled=%s\n" "$svc" "$state" "$enabled"
+for svc in "${SYSTEM_SERVICES[@]}"; do
+    printf "%-14s active=%-8s enabled=%s\n" "$svc" \
+      "$(systemctl is-active "$svc")" "$(systemctl is-enabled "$svc")"
 done
+printf "%-14s active=%-8s enabled=%s\n" fileflows \
+  "$(user_systemctl is-active fileflows)" \
+  "$(user_systemctl is-enabled fileflows)"
 
 echo; echo "═══ HTTP CHECK ═══"
-declare -A PORT=( [sabnzbd]=8085 [prowlarr]=9696 [radarr]=7878 [sonarr]=8989 [bazarr]=6767 [jellyseerr]=5055 [fileflows]=5000 )
-for svc in "${SERVICES[@]}"; do
+declare -A PORT=(
+  [sabnzbd]=8085 [prowlarr]=9696 [radarr]=7878 [sonarr]=8989
+  [bazarr]=6767 [jellyseerr]=5055 [fileflows]=5000
+)
+for svc in "${SYSTEM_SERVICES[@]}" fileflows; do
     port="${PORT[$svc]}"
-    code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:$port/" 2>/dev/null || echo "000")
-    echo "  $svc -> http://127.0.0.1:$port  (HTTP $code)"
+    code=$(curl --max-time 8 -sS -o /dev/null -w "%{http_code}" \
+      "http://127.0.0.1:$port/" 2>/dev/null || true)
+    printf "  %-12s HTTP %s\n" "$svc" "${code:-000}"
 done
 
-# --- Import FileFlows flows ------------------------------------------------
-echo; echo "═══ FILEFLOWS: IMPORTING FLOWS ═══"
-FLOW_DIR="$REPO/fileflows/flows"
-IMPORT_SCRIPT="$REPO/fileflows/import_flows.sh"
-if [ -d "$FLOW_DIR" ] && ls "$FLOW_DIR"/*.json &>/dev/null; then
-    podman cp "$FLOW_DIR" fileflows:/tmp/flows
-    podman cp "$IMPORT_SCRIPT" fileflows:/tmp/import_flows.sh
-    if podman exec fileflows bash /tmp/import_flows.sh; then
-        echo "  flows imported"
-    else
-        echo "  WARN: flow import had errors (FileFlows may not be ready)"
-    fi
-else
-    echo "  (no flow files at $FLOW_DIR — skipping)"
-fi
-
-echo; echo "═══ DON'T FORGET ═══"
-echo "After first boot of each UI, complete setup, then wire them together:"
-echo "  Prowlarr -> add indexer(s) + Radarr/Sonarr as apps"
-echo "  SABnzbd  -> add usenet provider + enable API"
-echo "  Radarr   -> add SABnzbd download client + Prowlarr indexers, set root folder /movies"
-echo "  Sonarr   -> add SABnzbd download client + Prowlarr indexers, set root folder /tv"
-echo "  Jellyseerr -> connect Jellyfin + Radarr + Sonarr"
-echo "Done."
+echo; echo "Done. Complete first-run app setup and wiring as documented in README.md."

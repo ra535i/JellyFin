@@ -2,7 +2,7 @@
 Description=qBittorrent - Torrent client (VPN tunneled via Gluetun proxy)
 After=gluetun.service
 Wants=gluetun.service
-RequiresMountsFor=/mnt/jellyfin/config/qbittorrent /mnt/media/downloads/torrents
+RequiresMountsFor=/home/skim/jellyfin-configs/qbittorrent /mnt/media/downloads/torrents
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f qbittorrent
@@ -12,7 +12,7 @@ ExecStart=/usr/bin/podman run --name qbittorrent --rm \
   -e PGID=1000 \
   -e TZ=America/New_York \
   -e WEBUI_PORT=18080 \
-  -v /mnt/jellyfin/config/qbittorrent:/config \
+  -v /home/skim/jellyfin-configs/qbittorrent:/config \
   -v /mnt/media/downloads/torrents:/downloads:rw \
   docker.io/linuxserver/qbittorrent:latest
 Restart=on-failure
