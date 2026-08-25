@@ -343,10 +343,11 @@ podman exec fileflows bash /tmp/import_flows.sh
 ## Systemd Service Files
 
 System service files live in `systemd/` and are deployed to
-`/etc/systemd/system/`. FileFlows is the exception: its working deployment is
-the **user** unit at `~/.config/systemd/user/fileflows.service`, enabled with
-`loginctl enable-linger skim`. Keep the obsolete system-level FileFlows unit
-disabled so two containers cannot compete for port 5000.
+`/etc/systemd/system/`. FileFlows is the exception: it runs as a **user**
+unit, symlinked from this repo at `~/.config/systemd/user/fileflows.service`,
+enabled with `loginctl enable-linger skim`. No system-level FileFlows unit
+exists (removed Aug 2026) — only one podman container can own the name and
+port 5000.
 
 | File | Purpose |
 |------|---------|

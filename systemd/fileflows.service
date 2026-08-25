@@ -1,32 +1,34 @@
 [Unit]
-Description=FileFlows - Media processing automation
-After=network-online.target mergerfs.service
-Wants=network-online.target mergerfs.service
-RequiresMountsFor=/mnt/media
+Description=FileFlows - Media processing automation (VAAPI / AMD 9060 XT)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/home/skim/jellyfin-configs/fileflows /mnt/media /mnt/media/fileflows-working
 
 [Service]
 User=skim
 Group=skim
+DevicePolicy=cgroup
+DeviceAllow=char-226:128 rwm  # renderD128 (AMD 9060 XT VA-API)
+DeviceAllow=char-226:1 rwm    # /dev/dri/card1 (control node, harmless)
 ExecStartPre=-/usr/bin/podman rm -f fileflows
-ExecStart=/usr/bin/podman run --name fileflows --pull=never --replace \
+ExecStart=/usr/bin/podman run --name fileflows \
   --network host \
-  --device /dev/dri:/dev/dri \
+  --device /dev/dri/renderD128:/dev/dri/renderD128 \
+  --device /dev/dri/card1:/dev/dri/card1 \
   -e PUID=1000 \
   -e PGID=1000 \
   -e TZ=America/New_York \
-  -e DOCKER_MODS= \
-  -v /home/skim/jellyfin-configs/fileflows/Data:/app/Data \
-  -v /home/skim/jellyfin-configs/fileflows/logs:/app/Logs \
-  -v /home/skim/jellyfin-configs/fileflows/temp:/app/Temp \
-  -v /mnt/media:/media:rw \
-  -v /mnt/media/fileflows-working:/temp \
+  -v /home/skim/jellyfin-configs/fileflows/Data:/app/Data:z \
+  -v /home/skim/jellyfin-configs/fileflows/logs:/app/Logs:z \
+  -v /home/skim/jellyfin-configs/fileflows/temp:/app/Temp:z \
+  -v /mnt/media:/media:z \
+  -v /mnt/media/fileflows-working:/temp:z \
   localhost/fileflows-amd-vaapi:latest
-ExecStop=/usr/bin/podman stop -t 10 fileflows
-ExecStopPost=-/usr/bin/podman rm -f fileflows
+ExecStop=/usr/bin/podman stop -t 30 fileflows
 Restart=on-failure
 RestartSec=10
-TimeoutStartSec=300
-TimeoutStopSec=20
+TimeoutStartSec=90
+TimeoutStopSec=40
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

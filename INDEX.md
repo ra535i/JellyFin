@@ -17,3 +17,7 @@ Contents:
   - fileflows/flows/*.json          FileFlows pipeline templates
   - fileflows/import_flows.sh       Flow importer
   - scripts/sab_rename_absolute_episodes.py  Utility script
+
+NOTE: Torrent support (Gluetun + qBittorrent) was removed Aug 2026.
+Usenet-only via SABnzbd. See git history for the old gluetun/qbittorrent
+service files if needed.
