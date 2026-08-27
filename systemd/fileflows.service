@@ -21,8 +21,8 @@ ExecStart=/usr/bin/podman run --name fileflows \
   -v /home/skim/jellyfin-configs/fileflows/Data:/app/Data:z \
   -v /home/skim/jellyfin-configs/fileflows/logs:/app/Logs:z \
   -v /home/skim/jellyfin-configs/fileflows/temp:/app/Temp:z \
-  -v /mnt/media:/media:z \
-  -v /mnt/media/fileflows-working:/temp:z \
+  -v /mnt/media:/media \
+  -v /mnt/media/fileflows-working:/temp \
   localhost/fileflows-amd-vaapi:latest
 ExecStop=/usr/bin/podman stop -t 30 fileflows
 Restart=on-failure
