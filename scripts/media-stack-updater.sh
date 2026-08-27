@@ -9,9 +9,16 @@
 #   99 — error
 
 set -euo pipefail
-
 UPDATED=false
 GIT_REPO=/home/skim/JellyFin
+
+# FileFlows is a USER unit (no system service by that name) — manage it via the user bus.
+user_systemctl() {
+    runuser -u skim -- env \
+      XDG_RUNTIME_DIR=/run/user/1000 \
+      DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
+      systemctl --user "$@"
+}
 
 # ─── Standard containers (just pull :latest) ─────────────────────────────────
 check_container_update() {
@@ -69,7 +76,7 @@ if [ "$FF_UPSTREAM_OLD" != "$FF_UPSTREAM_NEW" ]; then
     FF_NEW=$(podman image inspect "localhost/fileflows-amd-vaapi:latest" --format '{{.Id}}')
     if [ "$FF_OLD" != "$FF_NEW" ]; then
         echo "  ✅ [fileflows] custom image rebuilt: ${FF_OLD:0:12} → ${FF_NEW:0:12}"
-        sudo systemctl restart fileflows || echo "  ⚠️  [fileflows] restart failed"
+        user_systemctl restart fileflows || echo "  ⚠️  [fileflows] restart failed"
         UPDATED=true
     fi
 else
@@ -111,7 +118,8 @@ fi
 if $UPDATED; then
     echo ""
     echo "═══ Syncing service files to repo ═══"
-    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr fileflows cloudflared; do
+    # System units only — FileFlows is a user unit symlinked into this repo, so it's already in sync.
+    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cloudflared; do
         if [ -f "/etc/systemd/system/$f.service" ]; then
             sudo cp "/etc/systemd/system/$f.service" "$GIT_REPO/systemd/$f.service"
         fi

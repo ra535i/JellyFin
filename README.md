@@ -365,17 +365,16 @@ port 5000.
 
 ### Key systemd quirks
 
-- **FileFlows** has `TimeoutStartSec=300` because the custom image reinstall
-  VAAPI packages at first boot (apt install ffmpeg/vainfo/VA drivers). Without
-  this, systemd kills the startup after the default 90s timeout.
+- **FileFlows** has `TimeoutStartSec=90` — plenty now that ffmpeg and VAAPI
+  drivers are baked into the committed image (no apt install at boot).
 - **FileFlows** runs as `User=skim` (not root) so `podman` can access the
   `localhost/fileflows-amd-vaapi:latest` image (local images owned by the user).
 - **Only the FileFlows user unit may be enabled.** Disable the obsolete system
   unit with `sudo systemctl disable --now fileflows.service`; manage the working
   one with `systemctl --user ...`.
-- **FileFlows** uses both `ExecStop` (`podman stop -t 10 fileflows`) and
-  `ExecStopPost` (`podman rm -f fileflows`) instead of `--rm` because
-  `User=skim` mode makes podman stop/rm tricky in the restart cycle.
+- **FileFlows** cleans up with `ExecStartPre=-/usr/bin/podman rm -f fileflows`
+  plus `ExecStop=/usr/bin/podman stop -t 30 fileflows` instead of `--rm`,
+  because `User=skim` mode makes podman stop/rm tricky in the restart cycle.
 - **The abort.conf drop-in** (`/etc/systemd/system/service.d/10-timeout-abort.conf`)
   sets `TimeoutStopFailureMode=abort`, which sends SIGABRT to any service that
   fails to stop in time. This can cause surprising coredumps. To disable:
@@ -411,18 +410,18 @@ check that the systemd service mounts to `/app/config`:
 -v /home/skim/jellyfin-configs/jellyseerr:/app/config
 ```
 
-### FileFlows custom image + TimeoutStartSec
+### FileFlows custom image
 The `fileflows-amd-vaapi:latest` image is built on top of the stock
-`revenz/fileflows` by installing ffmpeg and VAAPI drivers. These packages are
-reinstalled every time the container starts (not baked into layers), which can
-take 2+ minutes. The systemd unit sets `TimeoutStartSec=300` to compensate.
+`revenz/fileflows` by installing ffmpeg and VAAPI drivers, then committed —
+so the packages are baked into the image and there's no apt install at boot.
+Rebuild it after pulling a new upstream (see `scripts/media-stack-updater.sh`).
 
 ### FileFlows User=skim
 FileFlows runs with `User=skim` at the systemd level (not root). This is
 necessary because `podman run` as root can't see locally-built images in the
 `localhost/` namespace — those are user-scoped. The tradeoff is that `--rm`
-doesn't work as reliably for cleanup, so `ExecStop + ExecStopPost` are used
-explicitly.
+doesn't work as reliably for cleanup, so `ExecStartPre` + `ExecStop` handle
+container removal explicitly.
 
 ### Power blip recovery
 After a sudden power loss, a service that exhausted its restart limit may need
