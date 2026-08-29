@@ -127,11 +127,15 @@ fi
 if $UPDATED; then
     echo ""
     echo "═══ Syncing service files to repo ═══"
-    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr fileflows cloudflared; do
+    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cloudflared; do
         if [ -f "/etc/systemd/system/$f.service" ]; then
             sudo cp "/etc/systemd/system/$f.service" "$GIT_REPO/systemd/$f.service"
         fi
     done
+    # FileFlows is a USER unit — sync from the user bus dir, not /etc/systemd/system/
+    if [ -f /home/skim/.config/systemd/user/fileflows.service ]; then
+        cp /home/skim/.config/systemd/user/fileflows.service "$GIT_REPO/systemd/fileflows.service"
+    fi
     sudo cp /etc/systemd/system/var-mnt-jellyfin.mount "$GIT_REPO/systemd/" 2>/dev/null || true
     sudo chown -R skim:skim "$GIT_REPO/systemd/"
 fi
