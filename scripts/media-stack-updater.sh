@@ -4,35 +4,37 @@
 # Designed for weekly cron. Reports to STDOUT — silent if nothing new.
 #
 # Exit codes:
-#   0  — no updates applied (everything current)
-#   1  — updates applied
-#   99 — error
+#   0  — success (whether or not updates were applied)
+#   99 — real error (failed pull, failed restart, etc.)
+# NOTE: previously exited 1 when updates were applied; the cron scheduler read
+# that as last_status=error. Fixed Aug 2026 — non-zero now means actual failure.
 
-set -euo pipefail
+set -uo pipefail
+
 UPDATED=false
+ERRORS=0
 GIT_REPO=/home/skim/JellyFin
-
-# FileFlows is a USER unit (no system service by that name) — manage it via the user bus.
-user_systemctl() {
-    runuser -u skim -- env \
-      XDG_RUNTIME_DIR=/run/user/1000 \
-      DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
-      systemctl --user "$@"
-}
 
 # ─── Standard containers (just pull :latest) ─────────────────────────────────
 check_container_update() {
     local name="$1" full_image="$2"
-    local old_id new_id
+    local old_id new_id pull_rc
 
     old_id=$(podman image inspect "$full_image" --format '{{.Id}}' 2>/dev/null || echo 'none')
     echo "  [$name] pulling ${full_image}..."
     podman pull "$full_image" >/dev/null 2>&1
+    pull_rc=$?
     new_id=$(podman image inspect "$full_image" --format '{{.Id}}' 2>/dev/null || echo 'none')
+
+    if [ $pull_rc -ne 0 ]; then
+        echo "  ⚠️ [$name] PULL FAILED (rc=$pull_rc) — left on current image"
+        ERRORS=$((ERRORS+1))
+        return 0
+    fi
 
     if [ "$old_id" != "$new_id" ]; then
         echo "  ✅ [$name] updated: ${old_id:0:12} → ${new_id:0:12}"
-        sudo systemctl restart "$name" || echo "  ⚠️  [$name] restart failed"
+        sudo systemctl restart "$name" || { echo "  ⚠️  [$name] restart failed"; ERRORS=$((ERRORS+1)); }
         UPDATED=true
     else
         echo "  □ [$name] current"
@@ -53,13 +55,19 @@ check_container_update "radarr"      "docker.io/linuxserver/radarr:latest"
 check_container_update "sonarr"      "docker.io/linuxserver/sonarr:latest"
 check_container_update "bazarr"      "docker.io/linuxserver/bazarr:latest"
 
-# ─── FileFlows — custom image rebuild ────────────────────────────────────────
+# ─── FileFlows — custom image rebuild (USER unit, not system) ────────────────
+export XDG_RUNTIME_DIR=/run/user/$(id -u)   # required for systemctl --user outside a login session
+
 echo ""
 echo "  [fileflows] checking upstream..."
 FF_OLD=$(podman image inspect "localhost/fileflows-amd-vaapi:latest" --format '{{.Id}}' 2>/dev/null || echo 'none')
 FF_UPSTREAM_OLD=$(podman image inspect "docker.io/revenz/fileflows:latest" --format '{{.Id}}' 2>/dev/null || echo 'none')
 
 podman pull docker.io/revenz/fileflows:latest >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "  ⚠️ [fileflows] upstream PULL FAILED — left on current image"
+    ERRORS=$((ERRORS+1))
+else
 FF_UPSTREAM_NEW=$(podman image inspect "docker.io/revenz/fileflows:latest" --format '{{.Id}}' 2>/dev/null || echo 'none')
 
 if [ "$FF_UPSTREAM_OLD" != "$FF_UPSTREAM_NEW" ]; then
@@ -76,11 +84,12 @@ if [ "$FF_UPSTREAM_OLD" != "$FF_UPSTREAM_NEW" ]; then
     FF_NEW=$(podman image inspect "localhost/fileflows-amd-vaapi:latest" --format '{{.Id}}')
     if [ "$FF_OLD" != "$FF_NEW" ]; then
         echo "  ✅ [fileflows] custom image rebuilt: ${FF_OLD:0:12} → ${FF_NEW:0:12}"
-        user_systemctl restart fileflows || echo "  ⚠️  [fileflows] restart failed"
+        systemctl --user restart fileflows.service || { echo "  ⚠️ [fileflows] restart failed"; ERRORS=$((ERRORS+1)); }
         UPDATED=true
     fi
 else
     echo "  □ [fileflows] current"
+fi
 fi
 
 # ─── Cloudflared — check binary version from GitHub ─────────────────────────
@@ -107,7 +116,7 @@ if [ -n "$LATEST_URL" ] && [ -n "$LATEST_TAG" ]; then
         cp /tmp/cloudflared /home/skim/.local/bin/cloudflared
         sudo cp /tmp/cloudflared /usr/local/bin/cloudflared
         rm -f /tmp/cloudflared
-        sudo systemctl restart cloudflared || echo "  ⚠️  [cloudflared] restart failed"
+        sudo systemctl restart cloudflared || { echo "  ⚠️ [cloudflared] restart failed"; ERRORS=$((ERRORS+1)); }
         UPDATED=true
     fi
 else
@@ -118,8 +127,7 @@ fi
 if $UPDATED; then
     echo ""
     echo "═══ Syncing service files to repo ═══"
-    # System units only — FileFlows is a user unit symlinked into this repo, so it's already in sync.
-    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cloudflared; do
+    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr fileflows cloudflared; do
         if [ -f "/etc/systemd/system/$f.service" ]; then
             sudo cp "/etc/systemd/system/$f.service" "$GIT_REPO/systemd/$f.service"
         fi
@@ -132,5 +140,6 @@ fi
 echo ""
 echo "═══ Done ═══"
 echo "Updates applied: $UPDATED"
+echo "Errors: $ERRORS"
 echo "Timestamp: $(date '+%Y-%m-%d %H:%M')"
-exit $([ "$UPDATED" = true ] && echo 1 || echo 0)
+[ "$ERRORS" -gt 0 ] && exit 99 || exit 0
