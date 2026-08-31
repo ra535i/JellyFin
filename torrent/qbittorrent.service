@@ -1,0 +1,31 @@
+[Unit]
+Description=qBittorrent (network namespace shared with Gluetun/PIA)
+Documentation=https://github.com/qdm12/gluetun-wiki/blob/main/setup/connect-a-container-to-gluetun.md
+After=gluetun.service network-online.target var-mnt-media.automount
+Requires=gluetun.service
+BindsTo=gluetun.service
+PartOf=gluetun.service
+RequiresMountsFor=/mnt/media/downloads
+
+[Service]
+Type=simple
+EnvironmentFile=%h/JellyFin/torrent/.env
+ExecStartPre=-/usr/bin/podman rm -f qbittorrent
+ExecStartPre=/usr/bin/bash -c 'for i in {1..45}; do /usr/bin/podman exec gluetun /gluetun-entrypoint healthcheck && exit 0; sleep 2; done; exit 1'
+ExecStart=/usr/bin/podman run --name qbittorrent --rm \
+  --network container:gluetun \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e TZ=America/New_York \
+  -e WEBUI_PORT=8080 \
+  -v %h/jellyfin-configs/qbittorrent:/config \
+  -v /mnt/media/downloads:/downloads \
+  docker.io/linuxserver/qbittorrent:latest
+ExecStop=/usr/bin/podman stop -t 30 qbittorrent
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=90
+TimeoutStopSec=45
+
+[Install]
+WantedBy=default.target

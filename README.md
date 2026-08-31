@@ -16,8 +16,8 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 │                            ┌───────┴────────┐                           │
 │                       movies/            tv/                           │
 │                         │                │                             │
-│  Radarr ──▶ Sonarr ──▶ Prowlarr ──▶ SABnzbd ── downloads/            │
-│                                            │                           │
+│  Radarr ──▶ Sonarr ──▶ Prowlarr ──▶ SABnzbd (priority 1)             │
+│                                  └──▶ qBittorrent via PIA (priority 2)│
 │               FileFlows ── (transcode pipeline)                       │
 │     REMUX ─▶ HEVC VAAPI ─▶ 20Mbps Bitrate                            │
 │     VAAPI fail ──▶ CPU fallback                                       │
@@ -35,7 +35,8 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 │                  ├── radarr.suvannmedia.com     (Access gate)          │
 │                  ├── sonarr.suvannmedia.com     (Access gate)          │
 │                  ├── bazarr.suvannmedia.com     (Access gate)          │
-│                  └── fileflows.suvannmedia.com  (Access gate)          │
+│                  ├── fileflows.suvannmedia.com  (Access gate)          │
+│                  └── qbittorrent.suvannmedia.com (Access gate)         │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -51,13 +52,16 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 | Sonarr     | 8989  | `linuxserver/sonarr:latest`             | `/config`                    | sonarr.suvannmedia.com       | Access gate      |
 | Bazarr     | 6767  | `linuxserver/bazarr:latest`             | `/config`                    | bazarr.suvannmedia.com       | Access gate      |
 | FileFlows  | 5000  | `localhost/fileflows-amd-vaapi:latest`  | `/app/Data`                  | fileflows.suvannmedia.com    | Access gate      |
+| qBittorrent| 8090  | `linuxserver/qbittorrent:latest`         | `/config`, `/downloads`      | qbittorrent.suvannmedia.com  | Access + qBit    |
 
 > **Jellyseerr gotcha:** Jellyseerr expects its config mounted at **`/app/config`**,
 > NOT `/config`. Mounting to the wrong path causes the first-boot setup wizard to
 > loop. The correct unit mount is
 > `-v /home/skim/jellyfin-configs/jellyseerr:/app/config`.
 
-> **All services** use `--network host` — no port mapping needed.
+> Most services use `--network host`. qBittorrent is the deliberate exception:
+> it shares Gluetun's network namespace, and Gluetun publishes WebUI port 8090
+> on loopback. This fail-closed design prevents qBittorrent from bypassing PIA.
 > All run as `User=1000:1000` (container UID is `1000:1000`).
 > FileFlows additionally runs as **`User=skim`** at the systemd level so podman
 > can access the locally-built `localhost/` image.
@@ -129,8 +133,9 @@ Before you start, you'll need:
 1. **Hardware** — 3x USB drives (pool), internal NVMe for application state
 2. **Domain** — registered at Cloudflare ($8–12/yr)
 3. **Usenet provider** — Frugal Usenet (~$5/mo)
-4. **Indexer** — NZBGeek (~$10/yr)
-5. **TMDb API key** — free from themoviedb.org
+4. **VPN provider** — Private Internet Access (torrent fallback)
+5. **Indexer** — NZBGeek (~$10/yr)
+6. **TMDb API key** — free from themoviedb.org
 
 ## Quick rebuild (fresh Bazzite install)
 
@@ -159,6 +164,9 @@ podman rm -f ff-builder
 
 # 5. Install the full stack (Jellyfin + Arr + FileFlows)
 sudo bash install/setup.sh
+
+# 6. Optional torrent fallback through PIA
+# Follow torrent/README.md after creating torrent/.env from .env.example.
 ```
 
 Existing configs under `/home/skim/jellyfin-configs/` are preserved — all apps
@@ -343,11 +351,16 @@ podman exec fileflows bash /tmp/import_flows.sh
 ## Systemd Service Files
 
 System service files live in `systemd/` and are deployed to
-`/etc/systemd/system/`. FileFlows is the exception: it runs as a **user**
+`/etc/systemd/system/`. FileFlows is an exception: it runs as a **user**
 unit, symlinked from this repo at `~/.config/systemd/user/fileflows.service`,
 enabled with `loginctl enable-linger skim`. No system-level FileFlows unit
 exists (removed Aug 2026) — only one podman container can own the name and
 port 5000.
+
+Gluetun and qBittorrent are also user units, sourced from `torrent/` and
+installed into `~/.config/systemd/user/`. Their credentials remain only in
+gitignored `torrent/.env`. See `torrent/README.md` and run
+`torrent/verify-torrent-stack.sh` after deployment.
 
 | File | Purpose |
 |------|---------|
@@ -362,6 +375,8 @@ port 5000.
 | `bazarr.service` | Bazarr subtitle automation |
 | `fileflows.service` | FileFlows media processing (installed as a **user unit**) |
 | `cloudflared.service` | Cloudflare Tunnel (system-level, not user-level) |
+| `torrent/gluetun.service` | PIA OpenVPN tunnel, kill switch, port forwarding (user unit) |
+| `torrent/qbittorrent.service` | Torrent client sharing Gluetun's network namespace (user unit) |
 
 ### Key systemd quirks
 
@@ -384,6 +399,9 @@ port 5000.
   ```
 - **Power blips** require `systemctl reset-failed <service>` before a service
   that hit its restart limit will try again.
+- **Gluetun + qBittorrent** use user-systemd with linger. qBittorrent has
+  `BindsTo=gluetun.service`, so stopping/restarting Gluetun also stops qBit;
+  qBit cannot remain running on a stale or non-VPN network namespace.
 
 ## Cost breakdown
 

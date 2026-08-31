@@ -1,0 +1,40 @@
+[Unit]
+Description=Gluetun VPN tunnel (PIA OpenVPN + port forwarding)
+Documentation=https://github.com/qdm12/gluetun-wiki
+After=network-online.target
+Wants=network-online.target
+Before=qbittorrent.service
+Upholds=qbittorrent.service
+
+[Service]
+Type=simple
+EnvironmentFile=%h/JellyFin/torrent/.env
+ExecStartPre=-/usr/bin/podman rm -f gluetun
+ExecStart=/usr/bin/podman run --name gluetun --rm \
+  --cap-add NET_ADMIN \
+  --cap-add NET_RAW \
+  --device /dev/net/tun \
+  --security-opt label=disable \
+  -p 127.0.0.1:8090:8080/tcp \
+  -v %h/jellyfin-configs/gluetun:/gluetun \
+  -v %h/JellyFin/torrent/update-qbittorrent-port.sh:/gluetun/update-qbittorrent-port.sh:ro \
+  -e "VPN_SERVICE_PROVIDER=private internet access" \
+  -e VPN_TYPE=openvpn \
+  -e OPENVPN_USER=${PIA_USERNAME} \
+  -e OPENVPN_PASSWORD=${PIA_PASSWORD} \
+  -e SERVER_REGIONS=Bahamas \
+  -e PORT_FORWARD_ONLY=true \
+  -e VPN_PORT_FORWARDING=on \
+  -e VPN_PORT_FORWARDING_STATUS_FILE=/gluetun/forwarded_port \
+  -e "VPN_PORT_FORWARDING_UP_COMMAND=/gluetun/update-qbittorrent-port.sh {{PORT}} {{VPN_INTERFACE}}" \
+  -e FIREWALL_OUTBOUND_SUBNETS=192.168.50.0/24 \
+  -e TZ=America/New_York \
+  docker.io/qmcgaw/gluetun:latest
+ExecStop=/usr/bin/podman stop -t 30 gluetun
+Restart=always
+RestartSec=15
+TimeoutStartSec=90
+TimeoutStopSec=45
+
+[Install]
+WantedBy=default.target
