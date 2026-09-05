@@ -15,8 +15,10 @@ ExecStart=/usr/bin/podman run --name fileflows \
   --network host \
   --device /dev/dri/renderD128:/dev/dri/renderD128 \
   --device /dev/dri/card1:/dev/dri/card1 \
-  -e PUID=1000 \
-  -e PGID=1000 \
+  # NOTE: no PUID/PGID on purpose. Rootless podman maps container uid 0 -> host skim(1000).
+  # The image's entrypoint runs dotnet as root when PUID is unset, so FileFlows writes to
+  # /mnt/media as host user skim and can overwrite existing media files. Setting PUID=1000
+  # made the app run as container uid 1000 = unmapped subuid on host -> EACCES on every file.
   -e TZ=America/New_York \
   -v /home/skim/jellyfin-configs/fileflows/Data:/app/Data:z \
   -v /home/skim/jellyfin-configs/fileflows/logs:/app/Logs:z \
