@@ -2,7 +2,8 @@
 
 Jellyfin + *Arr stack on Bazzite (immutable Fedora). All services run as
 systemd-managed podman containers (`--network host`). Exposed externally via
-Cloudflare Tunnel with Cloudflare Access gating admin services.
+Cloudflare Tunnel. Cloudflare Access is intended to gate the admin services
+(gating currently NOT enforced — see Cloudflare Access section).
 
 Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 
@@ -10,33 +11,39 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ USB Drives                                                            │
-│  3x 2.7T ext4 (UUID-mounted)                                           │
-│      └── mergerfs pool ─── /mnt/media (8.1T)                           │
-│                            ┌───────┴────────┐                           │
-│                       movies/            tv/                           │
-│                         │                │                             │
-│  Radarr ──▶ Sonarr ──▶ Prowlarr ──▶ SABnzbd (priority 1)             │
-│                                  └──▶ qBittorrent via PIA (priority 2)│
-│               FileFlows ── (transcode pipeline)                       │
-│     REMUX ─▶ HEVC VAAPI ─▶ 20Mbps Bitrate                            │
-│     VAAPI fail ──▶ CPU fallback                                       │
-│                    │                                                   │
-│ Internal NVMe ── /home/skim/jellyfin-configs/                        │
-│                    └── all app configs, databases, cache, metadata     │
-│                                                                        │
-│  Jellyfin (streaming) ◀── Jellyseerr (requests)                       │
-│                    │                                                    │
-│               Cloudflare Tunnel ─── suvannmedia.com                    │
-│                  ├── jellyfin.suvannmedia.com   (OPEN — mobile apps)    │
-│                  ├── jellyseerr.suvannmedia.com (OPEN — family)        │
-│                  ├── sabnzbd.suvannmedia.com    (Access gate)          │
-│                  ├── prowlarr.suvannmedia.com   (Access gate)          │
-│                  ├── radarr.suvannmedia.com     (Access gate)          │
-│                  ├── sonarr.suvannmedia.com     (Access gate)          │
-│                  ├── bazarr.suvannmedia.com     (Access gate)          │
-│                  ├── fileflows.suvannmedia.com  (Access gate)          │
-│                  └── qbittorrent.suvannmedia.com (Access gate)         │
+│Storage                                                               │
+│ 5.5T USB enclosure (SSI H/W RAID5) --> /mnt/media (ext4)             │
+│(mergerfs 3-drive pool retired Sept 2026 -- see Media storage)        │
+│                                                                      │
+│  movies/   tv/   downloads/   fileflows-working/                     │
+│                                                                      │
+│Jellyseerr (requests) --> Radarr / Sonarr --> Prowlarr (indexers)     │
+│                 |                                                    │
+│     +-----------+------------+                                       │
+│     |                        |                                       │
+│ SABnzbd (usenet, prio 1)  qBittorrent (torrents, prio 2,             │
+│                            tunneled via Gluetun/PIA)                 │
+│     +-----------+------------+                                       │
+│                 v                                                    │
+│  /mnt/media/downloads/complete  (post-processed staging)             │
+│                 |                                                    │
+│     Radarr/Sonarr import -->  movies/   tv/                          │
+│                 |                                                    │
+│  FileFlows watch folder --> in-place transcode                       │
+│   bitrate >20Mbps: remux MKV --> HEVC VAAPI --> cap 20Mbps           │
+│   (CPU fallback on VAAPI failure) --> replace original               │
+│                 |                                                    │
+│  Jellyfin library scan --> streams via tunnel                        │
+│                                                                      │
+│Internal NVMe -- /home/skim/jellyfin-configs/                         │
+│  all app configs, databases, cache, metadata                         │
+│                                                                      │
+│Cloudflare Tunnel --> suvannmedia.com (outbound-only)                 │
+│  jellyfin.suvannmedia.com       OPEN (mobile apps)                   │
+│  jellyseerr.suvannmedia.com     OPEN (family)                        │
+│  sabnzbd / prowlarr / radarr / sonarr / bazarr /                     │
+│  fileflows / qbittorrent .suvannmedia.com                            │
+│    Access gate: NOT ENFORCED (app auth only)                         │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -46,14 +53,18 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 |------------|-------|-----------------------------------------|------------------------------|------------------------------|------------------|
 | Jellyfin   | 8096  | `docker.io/jellyfin/jellyfin:latest`    | `/config`                    | jellyfin.suvannmedia.com     | Open (Jellyfin)  |
 | Jellyseerr | 5055  | `fallenbagel/jellyseerr:latest`         | **`/app/config`** ⚠️         | jellyseerr.suvannmedia.com   | Open (Jellyfin)  |
-| SABnzbd    | 8085  | `linuxserver/sabnzbd:latest`            | `/config`                    | sabnzbd.suvannmedia.com      | Access gate      |
-| Prowlarr   | 9696  | `linuxserver/prowlarr:latest`           | `/config`                    | prowlarr.suvannmedia.com     | Access gate      |
-| Radarr     | 7878  | `linuxserver/radarr:latest`             | `/config`                    | radarr.suvannmedia.com       | Access gate      |
-| Sonarr     | 8989  | `linuxserver/sonarr:latest`             | `/config`                    | sonarr.suvannmedia.com       | Access gate      |
-| Bazarr     | 6767  | `linuxserver/bazarr:latest`             | `/config`                    | bazarr.suvannmedia.com       | Access gate      |
-| FileFlows  | 5000  | `localhost/fileflows-amd-vaapi:latest`  | `/app/Data`                  | fileflows.suvannmedia.com    | Access gate      |
-| qBittorrent| 8090  | `linuxserver/qbittorrent:latest`         | `/config`, `/downloads`      | qbittorrent.suvannmedia.com  | Access + qBit    |
+| SABnzbd    | 8085  | `linuxserver/sabnzbd:latest`            | `/config`                    | sabnzbd.suvannmedia.com      | Access gate*       |
+| Prowlarr   | 9696  | `linuxserver/prowlarr:latest`           | `/config`                    | prowlarr.suvannmedia.com     | Access gate*       |
+| Radarr     | 7878  | `linuxserver/radarr:latest`             | `/config`                    | radarr.suvannmedia.com       | Access gate*       |
+| Sonarr     | 8989  | `linuxserver/sonarr:latest`             | `/config`                    | sonarr.suvannmedia.com       | Access gate*       |
+| Bazarr     | 6767  | `linuxserver/bazarr:latest`             | `/config`                    | bazarr.suvannmedia.com       | Access gate*       |
+| FileFlows  | 5000  | `localhost/fileflows-amd-vaapi:latest`  | `/app/Data`                  | fileflows.suvannmedia.com    | Access gate*       |
+| qBittorrent| 8090  | `linuxserver/qbittorrent:latest`         | `/config`, `/downloads`      | qbittorrent.suvannmedia.com  | Access* + qBit   |
 
+> **\* Access gate:** intended Cloudflare Access protection is currently NOT
+> enforced (see Cloudflare Access section). App-level auth is all that stands
+> between these URLs and the internet right now.
+>
 > **Jellyseerr gotcha:** Jellyseerr expects its config mounted at **`/app/config`**,
 > NOT `/config`. Mounting to the wrong path causes the first-boot setup wizard to
 > loop. The correct unit mount is
@@ -71,7 +82,7 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 | Storage | Mount/path | Purpose |
 |---------|------------|---------|
 | Internal NVMe | `/home/skim/jellyfin-configs` | App configs, databases, cache, metadata |
-| 3x 2.7T ext4 USB drives | `/mnt/media` (mergerfs) | Movies, TV, downloads, FileFlows work |
+| 5.5T USB drive (SSI H/W RAID5 controller) | `/mnt/media` (ext4, single volume) | Movies, TV, downloads, FileFlows work |
 
 ### Configs on internal NVMe
 
@@ -93,44 +104,30 @@ Do not put Jellyfin or Arr SQLite databases back on mergerfs. The old
 `var-mnt-jellyfin.mount` unit is retained only as migration history and is not
 a dependency of the current services.
 
-### Mergerfs pool
+### Media storage (mergerfs pool retired Sept 2026)
 
-Three UUID-mounted ext4 USB drives are pooled by mergerfs 2.42.0. The unit
-fails closed unless all three canonical branch mounts exist, then supervises
-the mergerfs process directly:
+`/mnt/media` is currently a **single 5.5T ext4 volume** (ext4 on an SSI
+hardware-RAID5 USB enclosure, presented as /dev/sda) mounted directly. The
+three-drive mergerfs pool described in older revisions of this README no
+longer exists on the running system:
 
-```ini
-# systemd/mergerfs.service (abbreviated)
-[Unit]
-Requires=var-mnt-pool1.mount var-mnt-pool2.mount var-mnt-pool3.mount
-After=var-mnt-pool1.mount var-mnt-pool2.mount var-mnt-pool3.mount
+- `mergerfs.service` is installed but **inactive**; `var-mnt-pool{1,2,3}.mount`
+  and `mnt-pool{1,2,3}.mount` units are **masked** (their old drive UUIDs no
+  longer exist).
+- `/usr/local/bin/mergerfs` (2.42.0) is still installed. To rebuild a pool:
+  unmask the pool mounts, recreate them for the new drive UUIDs, and restore
+  the `mergerfs.service` ExecStart from `systemd/mergerfs.service`.
 
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/mergerfs -f -o defaults,allow_other,cache.files=off,dropcacheonclose=false,category.create=pfrd,func.getattr=newest,minfreespace=100G,moveonenospc=pfrd,inodecalc=hybrid-hash,statfs=base,fsname=mergerfs-media /var/mnt/pool1:/var/mnt/pool2:/var/mnt/pool3 /var/mnt/media
-ExecStop=/usr/bin/umount /var/mnt/media
-```
-
-Important choices:
-
-- `pfrd` spreads new files across disks weighted by free space instead of
-  repeatedly hammering the currently emptiest disk.
-- `minfreespace=100G` reserves room for large remuxes/unpack operations.
-- `cache.files=off` and `dropcacheonclose=false` follow current upstream
-  guidance for Linux 6.6+ and mergerfs 2.41+.
-- Legacy `use_ino`, `hard_remove`, `cache.files=partial`, and boolean
-  `moveonenospc=true` options were removed.
-- mergerfs does not provide parity, checksums, healing, or protection from a
-  USB bridge/power failure. RAID and mergerfs are not backups.
-
-Installed via `install/install_mergerfs.sh` which downloads the static binary
-from GitHub releases (no rpm-ostree layer needed on immutable Fedora).
+**Backup caveat:** the enclosure's H/W RAID5 gives single-drive failure
+tolerance only. There is currently no off-device copy of the library; the
+enclosure, its USB bridge, or the controller is a single point of failure.
+RAID is not a backup.
 
 ## Prerequisites
 
 Before you start, you'll need:
 
-1. **Hardware** — 3x USB drives (pool), internal NVMe for application state
+1. **Hardware** — USB media drive(s), internal NVMe for application state
 2. **Domain** — registered at Cloudflare ($8–12/yr)
 3. **Usenet provider** — Frugal Usenet (~$5/mo)
 4. **VPN provider** — Private Internet Access (torrent fallback)
@@ -152,7 +149,8 @@ sudo semanage fcontext -a -t container_file_t \
   '/var/home/skim/jellyfin-configs(/.*)?'
 sudo restorecon -RF /var/home/skim/jellyfin-configs
 
-# 3. Install mergerfs pool (static binary, no rpm-ostree)
+# 3. (Only if pooling multiple drives) Install mergerfs (static binary,
+#    no rpm-ostree layer). Current build is a single volume; skip this.
 sudo bash install/install_mergerfs.sh
 
 # 4. Build the custom FileFlows image (needs ffmpeg + VAAPI)
@@ -265,9 +263,10 @@ allowed.
 Jellyfin and Jellyseerr are **open** (no Access gate) so mobile apps and family
 can connect without authentication.
 
-> **Note:** Access gate is currently blocked (remedial operation pending after
-> Aug 2026 incident). Services are still exposed but Access enforcement is not
-> active.
+> **⚠ CURRENT STATUS (verified 2026-09-05):** Access enforcement is NOT
+> active (remedial operation pending after the Aug 2026 incident). The admin
+> URLs currently 302 to the apps' own login pages, not to Cloudflare Access.
+> Re-enabling Access is the highest-priority security item for this stack.
 
 ## FileFlows Pipeline
 
@@ -365,7 +364,7 @@ gitignored `torrent/.env`. See `torrent/README.md` and run
 | File | Purpose |
 |------|---------|
 | `var-mnt-jellyfin.mount` | Legacy external config-drive unit (not used by current services) |
-| `mergerfs.service` | mergerfs pool from 3 USB drives |
+| `mergerfs.service` | mergerfs pool unit (RETIRED Sept 2026 — inactive; single volume in use) |
 | `jellyfin.service` | Jellyfin media server |
 | `jellyseerr.service` | Jellyseerr request portal (**mounts to `/app/config`**) |
 | `sabnzbd.service` | SABnzbd usenet downloader |
@@ -440,6 +439,14 @@ necessary because `podman run` as root can't see locally-built images in the
 `localhost/` namespace — those are user-scoped. The tradeoff is that `--rm`
 doesn't work as reliably for cleanup, so `ExecStartPre` + `ExecStop` handle
 container removal explicitly.
+
+### FileFlows PUID/PGID breakage
+Do NOT set `PUID=1000`/`PGID=1000` in the FileFlows unit. Under rootless
+podman, container uid 0 already maps to host `skim` (1000); with PUID unset
+the entrypoint's dotnet process writes to /mnt/media as skim and can replace
+transcoded files. Setting `PUID=1000` makes the app run as *container* uid
+1000, which maps to an unmapped subuid on the host — every media write fails
+with EACCES. See the note in `systemd/fileflows.service`.
 
 ### Power blip recovery
 After a sudden power loss, a service that exhausted its restart limit may need

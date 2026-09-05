@@ -20,6 +20,12 @@ Contents:
   - scripts/media-stack-updater.sh           Weekly image + cloudflared updater (cron)
   - scripts/fix-media-permissions.sh         Permissions watchdog for /mnt/media
 
-NOTE: Torrent support (Gluetun + qBittorrent) was removed Aug 2026.
-Usenet-only via SABnzbd. See git history for the old gluetun/qbittorrent
-service files if needed.
+NOTE: Torrent support (Gluetun + qBittorrent) was removed Aug 2026 and
+RESTORED Aug 31 2026 (commit 3fd35e6) as a PIA-tunneled priority-2 download
+client. Both user units are active on the running system; Radarr and Sonarr
+have qBittorrent enabled alongside SABnzbd. See torrent/README.md and
+torrent/verify-torrent-stack.sh.
+
+MEDIA STORAGE NOTE (Sept 2026): /mnt/media is a single 5.5T ext4 volume on a
+H/W-RAID5 USB enclosure. The 3-drive mergerfs pool is retired
+(mergerfs.service inactive, pool mounts masked).
