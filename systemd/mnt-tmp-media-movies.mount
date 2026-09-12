@@ -1,0 +1,14 @@
+# TEMPORARY — drive-swap window only. Bind-mounts the NVMe movies backup.
+[Unit]
+Description=Bind /run/media/system/internal-2/movies -> .tmp-media/movies (temp)
+Requires=run-media-system-internal\x2d2.mount
+After=run-media-system-internal\x2d2.mount
+
+[Mount]
+What=/run/media/system/internal-2/movies
+Where=/home/skim/.tmp-media/movies
+Type=bind
+Options=rw,x-systemd.automount=false
+
+[Install]
+WantedBy=multi-user.target

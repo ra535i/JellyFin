@@ -1,0 +1,19 @@
+# TEMPORARY — drive-swap window only (Reds ETA ~Sep 16-21, 2026)
+# Binds the staged backup tree over /var/mnt/media so all services keep
+# their existing paths while the Yottamaster array is rebuilt.
+# Remove after Phase 3 swap-back: sudo systemctl disable --now tmp-media.mount
+[Unit]
+Description=Temporary media tree (NVMe movies + MyCloud tv) for drive-swap window
+Requires=mnt-tmp-media-movies.mount mnt-tmp-media-fileflows-working.mount var-mnt-media-tv-rclone.service
+After=mnt-tmp-media-movies.mount mnt-tmp-media-fileflows-working.mount var-mnt-media-tv-rclone.service
+ExecStartPre=/usr/bin/systemctl stop autofs
+ExecStartPre=/usr/bin/umount /var/mnt/media
+
+[Mount]
+What=/home/skim/.tmp-media
+Where=/var/mnt/media
+Type=bind
+Options=rw,x-systemd.automount=false
+
+[Install]
+WantedBy=multi-user.target
