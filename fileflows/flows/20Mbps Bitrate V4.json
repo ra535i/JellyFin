@@ -1,8 +1,8 @@
 {
-  "Name": "20Mbps Bitrate",
+  "Name": "20Mbps Bitrate V4",
   "Type": 0,
-  "Revision": 5,
-  "Description": "compress for streaming",
+  "Revision": 8,
+  "Description": "Over 20Mbps: HEVC VAAPI bitrate encode at 20Mbps. Under 20Mbps: skip video encode; process TrueHD audio only, otherwise complete unchanged.",
   "Icon": "fas fa-film",
   "Properties": {
     "Fields": [],
@@ -10,7 +10,7 @@
   },
   "Parts": [
     {
-      "Uid": "4627b5c1-7675-47dd-9cc0-248b1363b524",
+      "Uid": "30b68547-2d00-4321-98cb-ceecb035dafe",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.VideoFile",
       "xPos": 310,
@@ -22,13 +22,13 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "b27cf578-d72d-4020-80ec-85b5dbe9d75f"
+          "InputNode": "681863c7-4696-4577-be13-adbe70d32abd"
         }
       ],
       "Type": 0
     },
     {
-      "Uid": "f93e9c54-8803-4741-b24a-f7ce5cfaced9",
+      "Uid": "3b7d53e5-56f1-4e6f-8e10-145a137f7159",
       "ReadOnly": false,
       "FlowElementUid": "MetaNodes.TheMovieDb.MovieLookup",
       "xPos": 300,
@@ -40,18 +40,18 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c"
+          "InputNode": "f4ca7199-25de-4407-bbf0-7891215b804e"
         },
         {
           "Input": 1,
           "Output": 2,
-          "InputNode": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c"
+          "InputNode": "f4ca7199-25de-4407-bbf0-7891215b804e"
         }
       ],
       "ErrorConnection": {
         "Input": 1,
         "Output": -1,
-        "InputNode": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c"
+        "InputNode": "f4ca7199-25de-4407-bbf0-7891215b804e"
       },
       "Type": 3,
       "Model": {
@@ -59,7 +59,7 @@
       }
     },
     {
-      "Uid": "b9e3c0c1-6525-4953-b9c0-85b71e1e964c",
+      "Uid": "f4ca7199-25de-4407-bbf0-7891215b804e",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderStart",
       "xPos": 300,
@@ -71,13 +71,13 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "9078d67d-5c17-406c-80dc-a7ec3f8b65f0"
+          "InputNode": "73880d01-a98a-4f63-b754-abb4ee250544"
         }
       ],
       "Type": 4
     },
     {
-      "Uid": "9078d67d-5c17-406c-80dc-a7ec3f8b65f0",
+      "Uid": "73880d01-a98a-4f63-b754-abb4ee250544",
       "Name": "Remux to MKV",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderRemuxToMkv",
@@ -90,13 +90,13 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "c87be988-764d-470d-b00f-17e6a0ad2cce"
+          "InputNode": "240ab180-ba65-4469-ae55-d261557d92a0"
         }
       ],
       "Type": 6
     },
     {
-      "Uid": "c87be988-764d-470d-b00f-17e6a0ad2cce",
+      "Uid": "240ab180-ba65-4469-ae55-d261557d92a0",
       "Name": "HEVC",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderVideoEncodeSimple",
@@ -109,7 +109,7 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "f2194104-805a-473b-b4cb-edd4aa4ca2a4"
+          "InputNode": "a3ba77d6-70a7-4d1d-bbe7-222bfc28f22d"
         }
       ],
       "Type": 6,
@@ -121,7 +121,31 @@
       }
     },
     {
-      "Uid": "f2194104-805a-473b-b4cb-edd4aa4ca2a4",
+      "Uid": "a3ba77d6-70a7-4d1d-bbe7-222bfc28f22d",
+      "Name": "Cap Bitrate at 20Mbps",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderVideoBitrateEncode",
+      "xPos": 300,
+      "yPos": 990,
+      "Label": "FFMPEG Builder: Bitrate Encode",
+      "Inputs": 1,
+      "Outputs": 1,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "6ee30a4b-904f-4d97-a145-b5458403d5cf"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "Codec": "h265",
+        "Encoder": "VAAPI",
+        "Bitrate": 18500
+      }
+    },
+    {
+      "Uid": "6ee30a4b-904f-4d97-a145-b5458403d5cf",
       "Name": "Remove Unwanted Subtitle Languages",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FFmpegBuilderLanguageRemover",
@@ -134,12 +158,12 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "24024dba-9bb8-4014-bc66-185e8a9ec3dc"
+          "InputNode": "032ab807-36a4-45ed-888a-8809dbaa6212"
         },
         {
           "Input": 1,
           "Output": 2,
-          "InputNode": "24024dba-9bb8-4014-bc66-185e8a9ec3dc"
+          "InputNode": "032ab807-36a4-45ed-888a-8809dbaa6212"
         }
       ],
       "Type": 6,
@@ -152,8 +176,8 @@
       }
     },
     {
-      "Uid": "24024dba-9bb8-4014-bc66-185e8a9ec3dc",
-      "Name": "Default Language to 'eng'",
+      "Uid": "032ab807-36a4-45ed-888a-8809dbaa6212",
+      "Name": "Default Language to \u0027eng\u0027",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioSetLanguage",
       "xPos": 300,
@@ -165,12 +189,12 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "48d73d4d-3faa-443f-8c42-9403d6c6759c"
+          "InputNode": "74e1f864-5a6c-4496-bfa6-6a6303260b3e"
         },
         {
           "Input": 1,
           "Output": 2,
-          "InputNode": "48d73d4d-3faa-443f-8c42-9403d6c6759c"
+          "InputNode": "74e1f864-5a6c-4496-bfa6-6a6303260b3e"
         }
       ],
       "Type": 6,
@@ -180,8 +204,8 @@
       }
     },
     {
-      "Uid": "48d73d4d-3faa-443f-8c42-9403d6c6759c",
-      "Name": "Primary Audio",
+      "Uid": "74e1f864-5a6c-4496-bfa6-6a6303260b3e",
+      "Name": "Ensure AC3 5.1 (reuse if present)",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioLanguageConverter",
       "xPos": 660,
@@ -192,13 +216,13 @@
       "OutputConnections": [
         {
           "Input": 1,
-          "Output": 2,
-          "InputNode": "49758c1b-810f-4d6b-aadd-91a546e0a838"
+          "Output": 1,
+          "InputNode": "52ca6002-14d0-489e-b132-9d01ba737a79"
         },
         {
           "Input": 1,
-          "Output": 1,
-          "InputNode": "f11e3e1d-17a6-4caf-93c2-fa12d615b3a2"
+          "Output": 2,
+          "InputNode": "d59545f8-1c9c-403e-a0dc-e943e701f779"
         }
       ],
       "Type": 6,
@@ -212,14 +236,14 @@
           "zht",
           "tha"
         ],
-        "RemoveOthers": true,
+        "RemoveOthers": false,
         "Codec": "ac3",
         "Channels": 6,
         "Bitrate": 1
       }
     },
     {
-      "Uid": "49758c1b-810f-4d6b-aadd-91a546e0a838",
+      "Uid": "d59545f8-1c9c-403e-a0dc-e943e701f779",
       "Name": "Fall Back Audio",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioLanguageConverter",
@@ -231,13 +255,13 @@
       "OutputConnections": [
         {
           "Input": 1,
-          "Output": 2,
-          "InputNode": "f0675233-2151-4b24-8318-4a5825b561d5"
+          "Output": 1,
+          "InputNode": "52ca6002-14d0-489e-b132-9d01ba737a79"
         },
         {
           "Input": 1,
-          "Output": 1,
-          "InputNode": "f11e3e1d-17a6-4caf-93c2-fa12d615b3a2"
+          "Output": 2,
+          "InputNode": "4b6ec3e5-895d-4d6f-b42f-83311ea58c17"
         }
       ],
       "Type": 6,
@@ -257,7 +281,7 @@
       }
     },
     {
-      "Uid": "f0675233-2151-4b24-8318-4a5825b561d5",
+      "Uid": "4b6ec3e5-895d-4d6f-b42f-83311ea58c17",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.BasicNodes.Functions.FailFlow",
       "xPos": 900,
@@ -272,7 +296,7 @@
       }
     },
     {
-      "Uid": "f11e3e1d-17a6-4caf-93c2-fa12d615b3a2",
+      "Uid": "cc13674d-b6f3-4d05-9a81-1e4c77aaae37",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderExecutor",
       "xPos": 660,
@@ -284,13 +308,13 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "cf533a35-013c-4aa7-bb41-e2fe7be3da97"
+          "InputNode": "a44c42a6-0738-4b51-bc84-6344327da6a3"
         }
       ],
       "ErrorConnection": {
         "Input": 1,
         "Output": -1,
-        "InputNode": "acd29152-e1f0-4e43-9268-9cf1a321c089"
+        "InputNode": "c5166fc5-3f1f-4dc6-ac18-14d751006f0c"
       },
       "Type": 5,
       "Model": {
@@ -299,7 +323,7 @@
       }
     },
     {
-      "Uid": "cf533a35-013c-4aa7-bb41-e2fe7be3da97",
+      "Uid": "a44c42a6-0738-4b51-bc84-6344327da6a3",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.BasicNodes.File.ReplaceOriginal",
       "xPos": 1140,
@@ -311,7 +335,7 @@
       "Type": 2
     },
     {
-      "Uid": "acd29152-e1f0-4e43-9268-9cf1a321c089",
+      "Uid": "c5166fc5-3f1f-4dc6-ac18-14d751006f0c",
       "Name": "CPU Fail-over Encode",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderVideoEncodeSimple",
@@ -324,7 +348,7 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "e917016a-8bb8-4d47-a384-0c24f21e56f6"
+          "InputNode": "40fabbd0-9242-429c-b0ad-56489af47f63"
         }
       ],
       "Type": 6,
@@ -336,7 +360,7 @@
       }
     },
     {
-      "Uid": "e917016a-8bb8-4d47-a384-0c24f21e56f6",
+      "Uid": "40fabbd0-9242-429c-b0ad-56489af47f63",
       "Name": "CPU Fail-over Executor",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderExecutor",
@@ -349,7 +373,7 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "cf533a35-013c-4aa7-bb41-e2fe7be3da97"
+          "InputNode": "a44c42a6-0738-4b51-bc84-6344327da6a3"
         }
       ],
       "Type": 5,
@@ -359,7 +383,7 @@
       }
     },
     {
-      "Uid": "b27cf578-d72d-4020-80ec-85b5dbe9d75f",
+      "Uid": "681863c7-4696-4577-be13-adbe70d32abd",
       "Name": "Bitrate greater than 20Mbps",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.VideoBitrateGreaterThan",
@@ -372,12 +396,12 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "f93e9c54-8803-4741-b24a-f7ce5cfaced9"
+          "InputNode": "3b7d53e5-56f1-4e6f-8e10-145a137f7159"
         },
         {
           "Input": 1,
           "Output": 2,
-          "InputNode": "927f0c18-7010-46d6-b19f-7ba768224d34"
+          "InputNode": "c721195c-3b07-4a46-9c9f-d44419e74c13"
         }
       ],
       "Type": 3,
@@ -387,7 +411,8 @@
       }
     },
     {
-      "Uid": "927f0c18-7010-46d6-b19f-7ba768224d34",
+      "Uid": "c721195c-3b07-4a46-9c9f-d44419e74c13",
+      "Name": "TrueHD audio check",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.AudioNodes.AudioIsCodec",
       "xPos": 80,
@@ -399,7 +424,12 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "1a70964b-2238-423b-8bb0-e0967b6d6dbf"
+          "InputNode": "8b1a2112-40c6-433a-b506-8dae445343d9"
+        },
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "f6553f34-c6b8-4515-be43-ff7d24ca1a20"
         }
       ],
       "Type": 3,
@@ -408,7 +438,7 @@
       }
     },
     {
-      "Uid": "1a70964b-2238-423b-8bb0-e0967b6d6dbf",
+      "Uid": "8b1a2112-40c6-433a-b506-8dae445343d9",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderStart",
       "xPos": 80,
@@ -420,10 +450,57 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "f2194104-805a-473b-b4cb-edd4aa4ca2a4"
+          "InputNode": "6ee30a4b-904f-4d97-a145-b5458403d5cf"
         }
       ],
       "Type": 4
+    },
+    {
+      "Uid": "52ca6002-14d0-489e-b132-9d01ba737a79",
+      "Name": "Remove TrueHD after AC3 exists",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderTrackRemover",
+      "xPos": 900,
+      "yPos": 700,
+      "Label": "FFMPEG Builder: Track Remover",
+      "Inputs": 1,
+      "Outputs": 2,
+      "OutputConnections": [
+        {
+          "Input": 1,
+          "Output": 1,
+          "InputNode": "cc13674d-b6f3-4d05-9a81-1e4c77aaae37"
+        },
+        {
+          "Input": 1,
+          "Output": 2,
+          "InputNode": "cc13674d-b6f3-4d05-9a81-1e4c77aaae37"
+        }
+      ],
+      "Type": 6,
+      "Model": {
+        "StreamType": "Audio",
+        "CustomTrackSelection": true,
+        "TrackSelectionOptions": [
+          {
+            "Key": "Codec",
+            "Value": "truehd"
+          }
+        ]
+      }
+    },
+    {
+      "Uid": "f6553f34-c6b8-4515-be43-ff7d24ca1a20",
+      "Name": "No Changes Needed",
+      "ReadOnly": false,
+      "FlowElementUid": "FileFlows.BasicNodes.Functions.CompleteFlow",
+      "xPos": -120,
+      "yPos": 640,
+      "Label": "Complete Flow",
+      "Inputs": 1,
+      "Outputs": 0,
+      "OutputConnections": [],
+      "Type": 3
     }
   ]
 }
