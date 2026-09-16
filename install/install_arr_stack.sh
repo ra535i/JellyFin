@@ -10,7 +10,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SYSTEMD_DIR="$REPO/systemd"
 CONFIG_ROOT=/home/skim/jellyfin-configs
-SYSTEM_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr)
+SYSTEM_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr flaresolverr)
 
 user_systemctl() {
     runuser -u skim -- env \
@@ -83,7 +83,7 @@ printf "%-14s active=%-8s enabled=%s\n" fileflows \
 echo; echo "═══ HTTP CHECK ═══"
 declare -A PORT=(
   [sabnzbd]=8085 [prowlarr]=9696 [radarr]=7878 [sonarr]=8989
-  [bazarr]=6767 [jellyseerr]=5055 [fileflows]=5000
+  [bazarr]=6767 [jellyseerr]=5055 [flaresolverr]=8191 [fileflows]=5000
 )
 for svc in "${SYSTEM_SERVICES[@]}" fileflows; do
     port="${PORT[$svc]}"

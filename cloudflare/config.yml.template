@@ -41,7 +41,7 @@ ingress:
   - hostname: fileflows.suvannmedia.com
     service: http://localhost:5000
 
-  # qBittorrent - PIA-tunneled torrent client (protect with Cloudflare Access)
+  # qBittorrent - torrent client (behind Cloudflare Access)
   - hostname: qbittorrent.suvannmedia.com
     service: http://localhost:8090
 

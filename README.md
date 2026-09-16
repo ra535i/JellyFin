@@ -52,18 +52,29 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 | Service    | Port  | Image                                   | Mounts to                    | External                     | Auth             |
 |------------|-------|-----------------------------------------|------------------------------|------------------------------|------------------|
 | Jellyfin   | 8096  | `docker.io/jellyfin/jellyfin:latest`    | `/config`                    | jellyfin.suvannmedia.com     | Open (Jellyfin)  |
-| Jellyseerr | 5055  | `fallenbagel/jellyseerr:latest`         | **`/app/config`** ⚠️         | jellyseerr.suvannmedia.com   | Open (Jellyfin)  |
+| Jellyseerr | 5055  | `seerr/seerr:latest` ^                  | **`/app/config`** ⚠️         | jellyseerr.suvannmedia.com   | Open (Jellyfin)  |
 | SABnzbd    | 8085  | `linuxserver/sabnzbd:latest`            | `/config`                    | sabnzbd.suvannmedia.com      | Access gate*       |
 | Prowlarr   | 9696  | `linuxserver/prowlarr:latest`           | `/config`                    | prowlarr.suvannmedia.com     | Access gate*       |
 | Radarr     | 7878  | `linuxserver/radarr:latest`             | `/config`                    | radarr.suvannmedia.com       | Access gate*       |
 | Sonarr     | 8989  | `linuxserver/sonarr:latest`             | `/config`                    | sonarr.suvannmedia.com       | Access gate*       |
 | Bazarr     | 6767  | `linuxserver/bazarr:latest`             | `/config`                    | bazarr.suvannmedia.com       | Access gate*       |
 | FileFlows  | 5000  | `localhost/fileflows-amd-vaapi:latest`  | `/app/Data`                  | fileflows.suvannmedia.com    | Access gate*       |
+| Flaresolverr| 8191  | `flaresolverr/flaresolverr:latest`      | —                            | — (internal only)            | —                |
 | qBittorrent| 8090  | `linuxserver/qbittorrent:latest`         | `/config`, `/downloads`      | qbittorrent.suvannmedia.com  | Access* + qBit   |
 
 > **\* Access gate:** intended Cloudflare Access protection is currently NOT
 > enforced (see Cloudflare Access section). App-level auth is all that stands
 > between these URLs and the internet right now.
+>
+> **^ Jellyseerr rename:** The project's Docker image moved from
+> `fallenbagel/jellyseerr` to `seerr/seerr` when the project rebranded from
+> Jellyseerr to Seerr. The `fallenbagel` registry stopped publishing new builds
+> in Aug 2025. The repo updater script has been updated accordingly.
+>
+> **Flaresolverr** has no tunnel subdomain — it runs as an internal Cloudflare
+> bypass proxy on localhost:8191. Prowlarr indexers point to
+> `http://localhost:8191` as a generic HTTP proxy for sites behind Cloudflare
+> challenge pages.
 >
 > **Jellyseerr gotcha:** Jellyseerr expects its config mounted at **`/app/config`**,
 > NOT `/config`. Mounting to the wrong path causes the first-boot setup wizard to
@@ -123,6 +134,15 @@ tolerance only. There is currently no off-device copy of the library; the
 enclosure, its USB bridge, or the controller is a single point of failure.
 RAID is not a backup.
 
+**Partial backups as of Sep 2026:**
+- **TV** is synced to MyCloud (kimshare) via rclone — used as a temp source
+  during drive swaps
+- **Movies** are synced to the internal NVMe as a temp source
+- **Full config tree** (`/home/skim/jellyfin-configs/`) lives on NVMe only;
+  no automated off-device backup exists
+
+For full DR procedures, see **`docs/RECOVERY.md`**.
+
 ## Prerequisites
 
 Before you start, you'll need:
@@ -169,6 +189,9 @@ sudo bash install/setup.sh
 
 Existing configs under `/home/skim/jellyfin-configs/` are preserved — all apps
 come back with their same settings, users, libraries, and API keys.
+
+For a complete disaster recovery guide (from OS install → services → tunnel
+→ smoke test), see **`docs/RECOVERY.md`**.
 
 ## First-time setup (from scratch, no configs)
 
@@ -373,6 +396,7 @@ gitignored `torrent/.env`. See `torrent/README.md` and run
 | `sonarr.service` | Sonarr TV automation |
 | `bazarr.service` | Bazarr subtitle automation |
 | `fileflows.service` | FileFlows media processing (installed as a **user unit**) |
+| `flaresolverr.service` | Flaresolverr Cloudflare bypass proxy (used by Prowlarr indexers) |
 | `cloudflared.service` | Cloudflare Tunnel (system-level, not user-level) |
 | `torrent/gluetun.service` | PIA OpenVPN tunnel, kill switch, port forwarding (user unit) |
 | `torrent/qbittorrent.service` | Torrent client sharing Gluetun's network namespace (user unit) |

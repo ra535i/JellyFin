@@ -1,8 +1,8 @@
 {
   "Name": "20Mbps Bitrate V4",
   "Type": 0,
-  "Revision": 9,
-  "Description": "Over 20Mbps: HEVC VAAPI encode capped at 18.5Mbps. At or under 20Mbps: leave video untouched; convert TrueHD audio only, otherwise complete unchanged.",
+  "Revision": 8,
+  "Description": "Over 20Mbps: HEVC VAAPI bitrate encode at 20Mbps. Under 20Mbps: skip video encode; process TrueHD audio only, otherwise complete unchanged.",
   "Icon": "fas fa-film",
   "Properties": {
     "Fields": [],
@@ -177,7 +177,7 @@
     },
     {
       "Uid": "032ab807-36a4-45ed-888a-8809dbaa6212",
-      "Name": "Default Language to 'eng'",
+      "Name": "Default Language to \u0027eng\u0027",
       "ReadOnly": false,
       "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderAudioSetLanguage",
       "xPos": 300,
@@ -239,7 +239,7 @@
         "RemoveOthers": false,
         "Codec": "ac3",
         "Channels": 6,
-        "Bitrate": 448
+        "Bitrate": 1
       }
     },
     {
@@ -277,7 +277,7 @@
         ],
         "Codec": "ac3",
         "Channels": 0,
-        "Bitrate": 256
+        "Bitrate": 1
       }
     },
     {
@@ -412,12 +412,12 @@
     },
     {
       "Uid": "c721195c-3b07-4a46-9c9f-d44419e74c13",
-      "Name": "TrueHD audio check (all streams)",
+      "Name": "TrueHD audio check",
       "ReadOnly": false,
-      "FlowElementUid": "FileFlows.BasicNodes.Functions.Function",
+      "FlowElementUid": "FileFlows.AudioNodes.AudioIsCodec",
       "xPos": 80,
       "yPos": 500,
-      "Label": "Function",
+      "Label": "Audio Is Codec",
       "Inputs": 1,
       "Outputs": 2,
       "OutputConnections": [
@@ -434,8 +434,7 @@
       ],
       "Type": 3,
       "Model": {
-        "Outputs": 2,
-        "Code": "let ffprobe = Flow.GetToolPath('ffprobe');\nlet process = Flow.Execute({\n    command: ffprobe,\n    argumentList: [\n        '-v', 'error',\n        '-select_streams', 'a',\n        '-show_entries', 'stream=codec_name',\n        '-of', 'csv=p=0',\n        Variables.file.FullName\n    ]\n});\n\nif (process.exitCode !== 0) {\n    Logger.ELog('TrueHD probe failed: ' + process.standardError);\n    return -1;\n}\n\nlet codecs = (process.standardOutput || '').toLowerCase().split(/\\r?\\n/);\nfor (let codec of codecs) {\n    if (codec.trim() === 'truehd') {\n        Logger.ILog('TrueHD audio stream found');\n        return 1;\n    }\n}\n\nLogger.ILog('No TrueHD audio streams found; leaving file unchanged');\nreturn 2;"
+        "Codec": "truehd"
       }
     },
     {
@@ -470,12 +469,12 @@
         {
           "Input": 1,
           "Output": 1,
-          "InputNode": "bbd6fabc-b157-486d-9558-a75a884e5a99"
+          "InputNode": "cc13674d-b6f3-4d05-9a81-1e4c77aaae37"
         },
         {
           "Input": 1,
           "Output": 2,
-          "InputNode": "bbd6fabc-b157-486d-9558-a75a884e5a99"
+          "InputNode": "cc13674d-b6f3-4d05-9a81-1e4c77aaae37"
         }
       ],
       "Type": 6,
@@ -502,29 +501,6 @@
       "Outputs": 0,
       "OutputConnections": [],
       "Type": 3
-    },
-    {
-      "Uid": "bbd6fabc-b157-486d-9558-a75a884e5a99",
-      "Name": "TrueHD Audio-Only Executor",
-      "ReadOnly": false,
-      "FlowElementUid": "FileFlows.VideoNodes.FfmpegBuilderNodes.FfmpegBuilderExecutor",
-      "xPos": 900,
-      "yPos": 850,
-      "Label": "FFMPEG Builder: Executor",
-      "Inputs": 1,
-      "Outputs": 2,
-      "OutputConnections": [
-        {
-          "Input": 1,
-          "Output": 1,
-          "InputNode": "a44c42a6-0738-4b51-bc84-6344327da6a3"
-        }
-      ],
-      "Type": 5,
-      "Model": {
-        "HardwareDecoding": false,
-        "Strictness": "experimental"
-      }
     }
   ]
 }

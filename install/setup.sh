@@ -66,7 +66,7 @@ bash "$REPO/install/install_arr_stack.sh"
 
 # 5. Verify all
 echo; echo "═══ VERIFY ═══"
-for svc in mergerfs jellyfin sabnzbd prowlarr radarr sonarr bazarr jellyseerr; do
+for svc in mergerfs jellyfin sabnzbd prowlarr radarr sonarr bazarr jellyseerr flaresolverr; do
     state=$(systemctl is-active "$svc" 2>/dev/null || echo "dead")
     printf "  %-20s %s\n" "$svc:" "$state"
 done
@@ -84,6 +84,7 @@ echo "  Sonarr     : http://$(hostname -I | awk '{print $1}'):8989"
 echo "  Bazarr     : http://$(hostname -I | awk '{print $1}'):6767"
 echo "  Jellyseerr : http://$(hostname -I | awk '{print $1}'):5055"
 echo "  FileFlows  : http://$(hostname -I | awk '{print $1}'):5000"
+echo "  Flaresolverr: http://$(hostname -I | awk '{print $1}'):8191"
 echo
 echo "  NEXT: wire apps together (see README 'Wiring the apps together'),"
 echo "  then deploy Cloudflare Tunnel: bash cloudflare/install_tunnel.sh"

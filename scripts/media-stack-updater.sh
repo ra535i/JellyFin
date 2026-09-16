@@ -48,7 +48,7 @@ echo ""
 
 # ─── 8 standard containers ──────────────────────────────────────────────────
 check_container_update "jellyfin"    "docker.io/jellyfin/jellyfin:latest"
-check_container_update "jellyseerr"  "docker.io/fallenbagel/jellyseerr:latest"
+check_container_update "jellyseerr"  "docker.io/seerr/seerr:latest"   # project renamed Jellyseerr→Seerr; fallenbagel repo dead (last build Aug 2025)
 check_container_update "sabnzbd"     "docker.io/linuxserver/sabnzbd:latest"
 check_container_update "prowlarr"    "docker.io/linuxserver/prowlarr:latest"
 check_container_update "radarr"      "docker.io/linuxserver/radarr:latest"

@@ -1,5 +1,5 @@
 {
-  "Name": "20Mbps Bitrate V4",
+  "Name": "20Mbps Bitrate V4 FIXED",
   "Type": 0,
   "Revision": 9,
   "Description": "Over 20Mbps: HEVC VAAPI encode capped at 18.5Mbps. At or under 20Mbps: leave video untouched; convert TrueHD audio only, otherwise complete unchanged.",
