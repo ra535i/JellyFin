@@ -2,19 +2,21 @@
 Description=FileFlows - Media processing automation (VAAPI / AMD 9060 XT)
 After=network-online.target
 Wants=network-online.target
-RequiresMountsFor=/home/skim/jellyfin-configs/fileflows /mnt/media /mnt/media/fileflows-working
+RequiresMountsFor=/home/skim/jellyfin-configs/fileflows /home/skim/jellyfin-configs/fileflows/runner-temp /var/mnt/pool1
 
 [Service]
 User=skim
 Group=skim
-DevicePolicy=cgroup
-DeviceAllow=char-226:128 rwm  # renderD128 (AMD 9060 XT VA-API)
-DeviceAllow=char-226:1 rwm    # /dev/dri/card1 (control node, harmless)
+# GPU access is granted by Podman's explicit --device flags below.
 # NOTE: no PUID/PGID on purpose. Rootless podman maps container uid 0 -> host skim(1000).
 # The image's entrypoint runs dotnet as root when PUID is unset, so FileFlows writes to
-# /mnt/media as host user skim and can overwrite existing media files. Setting PUID=1000
+# /var/mnt/pool1 as host user skim and can overwrite existing media files. Setting PUID=1000
 # made the app run as container uid 1000 = unmapped subuid on host -> EACCES on every file.
+# User units can start before system-level fstab mounts settle. Wait up to five minutes
+# for the RAID mount and working directory instead of crash-looping against an empty path.
+ExecStartPre=/usr/bin/bash -c 'for i in {1..150}; do /usr/bin/mountpoint -q /var/mnt/pool1 && /usr/bin/test -d /home/skim/jellyfin-configs/fileflows/runner-temp && exit 0; /usr/bin/sleep 2; done; exit 1'
 ExecStartPre=-/usr/bin/podman rm -f fileflows
+# Runner scratch on NVMe, not RAID5: plugin startup is metadata-heavy.
 ExecStart=/usr/bin/podman run --name fileflows \
   --network host \
   --device /dev/dri/renderD128:/dev/dri/renderD128 \
@@ -23,8 +25,8 @@ ExecStart=/usr/bin/podman run --name fileflows \
   -v /home/skim/jellyfin-configs/fileflows/Data:/app/Data:z \
   -v /home/skim/jellyfin-configs/fileflows/logs:/app/Logs:z \
   -v /home/skim/jellyfin-configs/fileflows/temp:/app/Temp:z \
-  -v /mnt/media:/media \
-  -v /mnt/media/fileflows-working:/temp \
+  -v /var/mnt/pool1:/media \
+  -v /home/skim/jellyfin-configs/fileflows/runner-temp:/temp \
   localhost/fileflows-amd-vaapi:latest
 ExecStop=/usr/bin/podman stop -t 30 fileflows
 Restart=on-failure

@@ -15,7 +15,8 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 │ 5.5T USB enclosure (SSI H/W RAID5) --> /mnt/media (ext4)             │
 │(mergerfs 3-drive pool retired Sept 2026 -- see Media storage)        │
 │                                                                      │
-│  movies/   tv/   downloads/   fileflows-working/                     │
+│  movies/   tv/   downloads/                                      │
+│  FileFlows runner scratch lives on NVMe, not the RAID            │
 │                                                                      │
 │Jellyseerr (requests) --> Radarr / Sonarr --> Prowlarr (indexers)     │
 │                 |                                                    │
@@ -58,7 +59,7 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 | Radarr     | 7878  | `linuxserver/radarr:latest`             | `/config`                    | radarr.suvannmedia.com       | Access gate*       |
 | Sonarr     | 8989  | `linuxserver/sonarr:latest`             | `/config`                    | sonarr.suvannmedia.com       | Access gate*       |
 | Bazarr     | 6767  | `linuxserver/bazarr:latest`             | `/config`                    | bazarr.suvannmedia.com       | Access gate*       |
-| FileFlows  | 5000  | `localhost/fileflows-amd-vaapi:latest`  | `/app/Data`                  | fileflows.suvannmedia.com    | Access gate*       |
+| FileFlows  | 5000  | `localhost/fileflows-amd-vaapi:latest`  | `/app/Data`, `/temp` (NVMe runner scratch) | fileflows.suvannmedia.com    | Access gate*       |
 | Flaresolverr| 8191  | `flaresolverr/flaresolverr:latest`      | —                            | — (internal only)            | —                |
 | qBittorrent| 8090  | `linuxserver/qbittorrent:latest`         | `/config`, `/downloads`      | qbittorrent.suvannmedia.com  | Access* + qBit   |
 
@@ -92,8 +93,8 @@ Survives reboots, survives OS updates. Rebuild from scratch in under an hour.
 
 | Storage | Mount/path | Purpose |
 |---------|------------|---------|
-| Internal NVMe | `/home/skim/jellyfin-configs` | App configs, databases, cache, metadata |
-| 5.5T USB drive (SSI H/W RAID5 controller) | `/mnt/media` (ext4, single volume) | Movies, TV, downloads, FileFlows work |
+| Internal NVMe | `/home/skim/jellyfin-configs` | App configs, databases, cache, metadata, **FileFlows runner scratch** |
+| 5.5T USB drive (SSI H/W RAID5 controller) | `/mnt/media` (ext4, single volume) | Movies, TV, downloads, FileFlows media I/O |
 
 ### Configs on internal NVMe
 
@@ -114,6 +115,32 @@ sudo restorecon -RF /var/home/skim/jellyfin-configs
 Do not put Jellyfin or Arr SQLite databases back on mergerfs. The old
 `var-mnt-jellyfin.mount` unit is retained only as migration history and is not
 a dependency of the current services.
+
+### FileFlows runner scratch is NVMe-only
+
+FileFlows uses `/home/skim/jellyfin-configs/runner-temp` for the container's
+`/temp` mount. Keep this on the internal NVMe. Runner startup loads the plugin
+set through many metadata-heavy operations; putting `/temp` on the RAID5 media
+volume makes files that need no processing wait minutes while the runner boots.
+A controlled comparison showed the same no-op file's Startup phase falling from
+32 seconds on RAID-backed scratch to 0.2 seconds on NVMe.
+
+During recovery, create the directory before starting FileFlows:
+
+```bash
+mkdir -p /home/skim/jellyfin-configs/runner-temp
+chown skim:skim /home/skim/jellyfin-configs/runner-temp
+chmod 0775 /home/skim/jellyfin-configs/runner-temp
+```
+
+The service unit must contain:
+
+```text
+-v /home/skim/jellyfin-configs/runner-temp:/temp
+```
+
+Do not restore the retired `/var/mnt/pool1/fileflows-working:/temp` mount just
+because that directory existed during the RAID migration.
 
 ### Media storage (mergerfs pool retired Sept 2026)
 

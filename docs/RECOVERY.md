@@ -97,10 +97,15 @@ podman exec -u 0 ff-builder apt install -y \
 podman commit ff-builder localhost/fileflows-amd-vaapi:latest
 podman rm -f ff-builder
 
-# 5. Install all systemd units and enable services
+# 5. Create FileFlows runner scratch on NVMe BEFORE starting the service
+mkdir -p /home/skim/jellyfin-configs/runner-temp
+chown skim:skim /home/skim/jellyfin-configs/runner-temp
+chmod 0775 /home/skim/jellyfin-configs/runner-temp
+
+# 6. Install all systemd units and enable services
 sudo bash install/setup.sh
 
-# 6. (Torrent fallback) Deploy Gluetun + qBittorrent
+# 7. (Torrent fallback) Deploy Gluetun + qBittorrent
 #    Copy torrent/.env.example to torrent/.env and fill in PIA credentials
 #    then run: sudo bash torrent/verify-torrent-stack.sh
 ```
@@ -332,6 +337,19 @@ Wrong path = setup wizard loops on every restart.
 ```bash
 # Correct mount:
 -v /home/skim/jellyfin-configs/jellyseerr:/app/config
+```
+
+### FileFlows runner scratch performance
+FileFlows' `/temp` mount is deliberately on the internal NVMe at
+`/home/skim/jellyfin-configs/runner-temp`. Do not move it onto the RAID5 media
+volume during recovery or storage migrations: every ephemeral runner loads
+plugins through metadata-heavy startup work, and RAID-backed scratch can make a
+no-op file take minutes before the flow reaches its decision nodes. Preserve
+this mount in `systemd/fileflows.service`, create the directory first, and
+verify it with:
+
+```bash
+podman inspect fileflows --format '{{range .Mounts}}{{if eq .Destination "/temp"}}{{.Source}}{{end}}{{end}}'
 ```
 
 ### FileFlows must NOT have PUID/PGID

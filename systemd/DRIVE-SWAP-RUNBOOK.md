@@ -1,5 +1,11 @@
 # DRIVE-SWAP RUNBOOK — Yottamaster greens → Reds (Reds ETA ~Sep 16-21, 2026)
 
+> **Current recovery invariant (post-migration):** FileFlows media is on the
+> RAID5 pool, but runner scratch is not. Preserve
+> `/home/skim/jellyfin-configs/runner-temp:/temp` on NVMe. Do not recreate the
+> retired `/var/mnt/pool1/fileflows-working:/temp` mount; RAID-backed runner
+> scratch caused no-op files to spend minutes in plugin startup.
+
 Goal: keep the whole suvannmedia stack live on backup paths while we restore to
 the fresh RAID5. Path never moves (/var/mnt/media), so no service configs change.
 
@@ -9,7 +15,7 @@ Measured facts (Sep 11):
 - tv = 1.19 TiB → restore ≈ 10 hrs at planning rate; worst case much longer if NAS throttles
 - Parallel jobs do NOT add throughput (28 MB/s combined in test). Run ONE job, monitor it.
 - If restore stalls below ~10 MB/s for >15 min: kill + restart rclone (fresh SMB session often un-throttles)
-- movies+fileflows on NVMe → new array ≈ 1-2 hrs, runs in parallel with tv
+- FileFlows runner scratch stays on NVMe; only media is restored to the new array
 
 ## PRE-SWAP (do once backups verified green — expected done Sep 11-12)
 [ ] rclone check both legs:
