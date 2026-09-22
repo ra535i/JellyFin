@@ -48,7 +48,8 @@ echo ""
 
 # ─── 8 standard containers ──────────────────────────────────────────────────
 check_container_update "jellyfin"    "docker.io/jellyfin/jellyfin:latest"
-check_container_update "jellyseerr"  "docker.io/seerr/seerr:latest"   # project renamed Jellyseerr→Seerr; fallenbagel repo dead (last build Aug 2025)
+# Production is intentionally pinned to the deployed Seerr release.
+check_container_update "jellyseerr"  "docker.io/seerr/seerr:v3.4.1"
 check_container_update "sabnzbd"     "docker.io/linuxserver/sabnzbd:latest"
 check_container_update "prowlarr"    "docker.io/linuxserver/prowlarr:latest"
 check_container_update "radarr"      "docker.io/linuxserver/radarr:latest"
@@ -136,7 +137,7 @@ if $UPDATED; then
     if [ -f /home/skim/.config/systemd/user/fileflows.service ]; then
         cp /home/skim/.config/systemd/user/fileflows.service "$GIT_REPO/systemd/fileflows.service"
     fi
-    sudo cp /etc/systemd/system/var-mnt-jellyfin.mount "$GIT_REPO/systemd/" 2>/dev/null || true
+
     sudo chown -R skim:skim "$GIT_REPO/systemd/"
 fi
 

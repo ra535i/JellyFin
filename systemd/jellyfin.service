@@ -1,8 +1,8 @@
 [Unit]
 Description=Jellyfin Media Server
-After=network-online.target mergerfs.service
-Wants=network-online.target mergerfs.service
-RequiresMountsFor=/var/mnt/media
+After=network-online.target var-mnt-pool1.mount
+Wants=network-online.target
+RequiresMountsFor=/var/mnt/pool1 /home/skim/jellyfin-configs
 
 [Service]
 ExecStartPre=/usr/bin/podman rm -f jellyfin
@@ -10,7 +10,7 @@ ExecStart=/usr/bin/podman run --name jellyfin --rm \
   --network host \
   --user 1000:1000 \
   --device /dev/dri:/dev/dri \
-  -v /mnt/media:/media:rw \
+  -v /var/mnt/pool1:/media:rw,z \
   -v /home/skim/jellyfin-configs:/config \
   -v /usr/lib64/libOpenCL.so.1:/usr/lib/libOpenCL.so.1:ro \
   -v /usr/lib64/libdrm_amdgpu.so.1:/usr/lib/libdrm_amdgpu.so.1:ro \

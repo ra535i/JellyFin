@@ -2,17 +2,20 @@
 # Jellyfin systemd service installer
 # RUN AS ROOT:  sudo bash install/install_jellyfin.sh
 # Installs Jellyfin as a systemd-managed podman container.
-# Requires: /mnt/media (mergerfs pool); app state lives on local NVMe.
+# Requires: /var/mnt/pool1 (single ext4 media filesystem); app state lives on local NVMe.
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+MEDIA_ROOT=/var/mnt/pool1
 
 echo "═══ JELLYFIN INSTALL ═══"
 
-# Dirs
-mkdir -p /mnt/media/movies /mnt/media/tv /mnt/media/music
-chown -R 1000:1000 /mnt/media 2>/dev/null || true
+mountpoint -q "$MEDIA_ROOT" || {
+    echo "ERROR: $MEDIA_ROOT is not mounted; refusing to create media directories." >&2
+    exit 1
+}
+mkdir -p "$MEDIA_ROOT/movies" "$MEDIA_ROOT/tv" "$MEDIA_ROOT/music"
 
 # Config/data/cache dirs on local NVMe
 CONFIG_ROOT=/home/skim/jellyfin-configs

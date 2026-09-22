@@ -12,3 +12,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 torrent/.env
+
+# Local exports, experiments, and FileFlows backup artifacts are not deployable
+# stack configuration.
+/cron/
+/storage-resilience/
+/fileflows/flows/*.bak-*
+/fileflows/flows/backups/

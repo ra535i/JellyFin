@@ -3,7 +3,7 @@
 # Runs silently unless it actually changes something.
 #
 # WHAT IT FIXES:
-#   1. Directories under /mnt/media/ — ensures 777 so FileFlows (UID 525287) can delete/replace files
+#   1. Directories under /var/mnt/pool1/ — ensures 777 so FileFlows (UID 525287) can delete/replace files
 #   2. .mkv / .mp4 files — ensures 664 (readable by everyone)
 #
 # EXIT CODES:
@@ -11,7 +11,7 @@
 #   1 = permissions were fixed (prints what changed)
 
 set -euo pipefail
-MEDIA_BASE="/var/mnt/media"
+MEDIA_BASE="/var/mnt/pool1"
 CHANGED=0
 
 # 1. Fix directories — must be at least 755, but we set 777 for FileFlows

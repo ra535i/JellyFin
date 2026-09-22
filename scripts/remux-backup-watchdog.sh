@@ -1,5 +1,5 @@
 #!/bin/bash
-# remux-backup-watchdog.sh — self-cleanup for /var/mnt/media/remux-backup
+# remux-backup-watchdog.sh — self-cleanup for /var/mnt/pool1/remux-backup
 #
 # History: Aug 16-17, an agent session moved 12 REMUX originals (~800GB) into
 # this folder as a one-off backup before re-downloading WEB-DLs. It was never
@@ -16,7 +16,7 @@
 
 set -uo pipefail
 
-MEDIA_ROOT=/var/mnt/media
+MEDIA_ROOT=/var/mnt/pool1
 TARGET="$MEDIA_ROOT/remux-backup"
 AUDIT_LOG="$HOME/.hermes/profiles/last/scripts/logs/remux-backup-watchdog.log"
 GRACE_HOURS=24

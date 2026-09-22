@@ -13,7 +13,7 @@
 #   3. Creates the tunnel (or reuses existing)
 #   4. Saves credentials.json
 #   5. Creates DNS CNAME records for all subdomains
-#   6. Installs the user systemd service
+#   6. Installs the system-level systemd service
 #   7. Starts it
 
 set -euo pipefail
@@ -28,7 +28,7 @@ CF_ACCOUNT_ID="fe5505252424944f4111b7059bcab9a1"
 # CF_API_TOKEN — set as env var or paste below
 : "${CF_API_TOKEN:=""}"
 
-SUBDOMAINS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr fileflows)
+SUBDOMAINS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr fileflows qbittorrent)
 
 # ===== Install cloudflared =====
 echo "═══ INSTALLING CLOUDFLARED ═══"

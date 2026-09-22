@@ -7,7 +7,7 @@ This stack runs rootless under the `skim` user. qBittorrent shares Gluetun's net
 - Gluetun: PIA OpenVPN, PIA native port forwarding, firewall enabled
 - qBittorrent: `--network container:gluetun`
 - Local WebUI origin: `http://127.0.0.1:8090` (published by Gluetun)
-- Download mount: host `/mnt/media/downloads` = container `/downloads`
+- Download mount: host `/var/mnt/pool1/downloads` = container `/downloads`
 - Torrent save path: `/downloads/torrents`
 - Incomplete path: `/downloads/torrents/incomplete`
 - Cloudflare hostname: `qbittorrent.suvannmedia.com` -> `http://localhost:8090`
@@ -19,11 +19,11 @@ Copy `.env.example` to `.env`, fill in the PIA OpenVPN credentials and qBittorre
 ## Install
 
 ```bash
-mkdir -p /mnt/media/downloads/torrents/incomplete
+mkdir -p /var/mnt/pool1/downloads/torrents/incomplete
 # Rootless qBittorrent's internal UID 1000 maps to host UID 525287.
 # Preserve normal skim ownership while granting qBittorrent durable write access.
-podman unshare setfacl -R -m u:1000:rwx /mnt/media/downloads/torrents
-podman unshare setfacl -R -d -m u:1000:rwx /mnt/media/downloads/torrents
+podman unshare setfacl -R -m u:1000:rwx /var/mnt/pool1/downloads/torrents
+podman unshare setfacl -R -d -m u:1000:rwx /var/mnt/pool1/downloads/torrents
 
 mkdir -p ~/.config/systemd/user
 install -m 0644 torrent/gluetun.service torrent/qbittorrent.service ~/.config/systemd/user/

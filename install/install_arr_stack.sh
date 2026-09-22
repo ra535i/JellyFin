@@ -10,6 +10,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SYSTEMD_DIR="$REPO/systemd"
 CONFIG_ROOT=/home/skim/jellyfin-configs
+MEDIA_ROOT=/var/mnt/pool1
 SYSTEM_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr flaresolverr)
 
 user_systemctl() {
@@ -21,13 +22,12 @@ user_systemctl() {
 
 # --- Preflight -------------------------------------------------------------
 echo "═══ PREFLIGHT ═══"
-mountpoint -q /mnt/media || {
-    echo "ERROR: /mnt/media is not mounted. Start mergerfs first." >&2
+mountpoint -q "$MEDIA_ROOT" || {
+    echo "ERROR: $MEDIA_ROOT is not mounted; refusing to start services against an empty path." >&2
     exit 1
 }
 
-for d in /mnt/media/downloads /mnt/media/movies /mnt/media/tv \
-         /mnt/media/fileflows-working \
+for d in "$MEDIA_ROOT/downloads" "$MEDIA_ROOT/movies" "$MEDIA_ROOT/tv" \
          "$CONFIG_ROOT/sabnzbd" "$CONFIG_ROOT/prowlarr" \
          "$CONFIG_ROOT/radarr" "$CONFIG_ROOT/sonarr" \
          "$CONFIG_ROOT/bazarr" "$CONFIG_ROOT/jellyseerr" \
@@ -47,7 +47,7 @@ fi
 echo "dirs and SELinux labels ok"
 
 # FileFlows runner scratch must remain on the internal NVMe. Keeping this
-# outside /mnt/media avoids RAID5 metadata contention during plugin startup.
+# outside the media filesystem avoids RAID5 metadata contention during plugin startup.
 install -d -o skim -g skim -m 0775 /home/skim/jellyfin-configs/runner-temp
 
 # --- Install system units --------------------------------------------------

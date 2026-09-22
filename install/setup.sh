@@ -1,28 +1,34 @@
 #!/bin/bash
-# media-server - MASTER SETUP
-# RUN AS ROOT:  sudo bash install/setup.sh
+# suvannmedia master installer
+# Run as root: sudo bash install/setup.sh
 #
-# Full setup from a fresh-ish state:
-#   1. Prepare local NVMe application state and SELinux labels
-#   2. Install mergerfs (pool the USB media drives)
-#   3. Install Jellyfin
-#   4. Install the Arr stack (SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Jellyseerr, FileFlows)
-#   5. Build the custom FileFlows image with ffmpeg + VAAPI
-#
-# Idempotent — safe to re-run any time.
+# Requires the production single-volume media filesystem mounted at
+# /var/mnt/pool1. Application state stays on the internal NVMe.
 
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
+MEDIA_ROOT=/var/mnt/pool1
+CONFIG_ROOT=/home/skim/jellyfin-configs
 
-echo "════════════════════════════════════════════"
-echo "  MEDIA SERVER MASTER SETUP"
-echo "════════════════════════════════════════════"
+user_systemctl() {
+    runuser -u skim -- env \
+      XDG_RUNTIME_DIR=/run/user/1000 \
+      DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus \
+      systemctl --user "$@"
+}
 
-# 0. Prepare local NVMe app state
-echo; echo "═══ 0. LOCAL CONFIG STORAGE ═══"
-mkdir -p /home/skim/jellyfin-configs
-chown -R 1000:1000 /home/skim/jellyfin-configs
+printf '%s\n' '════════════════════════════════════════════'
+printf '%s\n' '  SUVANNMEDIA STACK SETUP'
+printf '%s\n' '════════════════════════════════════════════'
+
+mountpoint -q "$MEDIA_ROOT" || {
+    echo "ERROR: $MEDIA_ROOT is not mounted; refusing to start services against an empty path." >&2
+    exit 1
+}
+
+mkdir -p "$CONFIG_ROOT"
+chown -R skim:skim "$CONFIG_ROOT"
 chmod 711 /home/skim
 if command -v semanage &>/dev/null; then
     semanage fcontext -a -t container_file_t \
@@ -31,60 +37,24 @@ if command -v semanage &>/dev/null; then
       '/var/home/skim/jellyfin-configs(/.*)?'
     restorecon -RF /var/home/skim/jellyfin-configs
 fi
-echo "Local config storage ready"
+install -d -o skim -g skim -m 0775 "$CONFIG_ROOT/fileflows/runner-temp"
 
-if ! mountpoint -q /mnt/media; then
-    echo "WARN: /mnt/media not mounted yet. mergerfs install will handle this."
-fi
-
-# 1. Ensure mergerfs binary + service
-echo; echo "═══ 1. MERGERFS ═══"
-bash "$REPO/install/install_mergerfs.sh"
-echo "mergerfs done"
-
-# 2. Build custom FileFlows image
-echo; echo "═══ 2. BUILD FILEFLOWS IMAGE ═══"
 if ! podman image exists localhost/fileflows-amd-vaapi:latest; then
-    podman run -d --name ff-builder docker.io/revenz/fileflows:latest
-    sleep 5
-    podman exec -u 0 ff-builder apt update
-    podman exec -u 0 ff-builder apt install -y ffmpeg vainfo mesa-va-drivers intel-media-va-driver-non-free
-    podman commit ff-builder localhost/fileflows-amd-vaapi:latest
-    podman rm -f ff-builder
-    echo "Custom FileFlows image built"
-else
-    echo "FileFlows image already exists"
+    echo 'ERROR: localhost/fileflows-amd-vaapi:latest is missing. Build it using README.md before setup.' >&2
+    exit 1
 fi
 
-# 3. Jellyfin
-echo; echo "═══ 3. JELLYFIN ═══"
 bash "$REPO/install/install_jellyfin.sh"
-
-# 4. Arr stack
-echo; echo "═══ 4. ARR STACK ═══"
 bash "$REPO/install/install_arr_stack.sh"
 
-# 5. Verify all
-echo; echo "═══ VERIFY ═══"
-for svc in mergerfs jellyfin sabnzbd prowlarr radarr sonarr bazarr jellyseerr flaresolverr; do
-    state=$(systemctl is-active "$svc" 2>/dev/null || echo "dead")
-    printf "  %-20s %s\n" "$svc:" "$state"
+printf '%s\n' '═══ HTTP VERIFY ═══'
+declare -A PORT=(
+  [jellyfin]=8096 [jellyseerr]=5055 [sabnzbd]=8085 [prowlarr]=9696
+  [radarr]=7878 [sonarr]=8989 [bazarr]=6767 [flaresolverr]=8191 [fileflows]=5000
+)
+for svc in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr flaresolverr fileflows; do
+    code=$(curl --max-time 8 -sS -o /dev/null -w '%{http_code}' \
+      "http://127.0.0.1:${PORT[$svc]}/" 2>/dev/null || true)
+    printf '  %-12s HTTP %s\n' "$svc" "${code:-000}"
 done
-printf "  %-20s %s\n" "fileflows:" \
-  "$(runuser -u skim -- env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus systemctl --user is-active fileflows 2>/dev/null || echo dead)"
-
-echo; echo "════════════════════════════════════════════"
-echo "  SETUP COMPLETE"
-echo "════════════════════════════════════════════"
-echo "  Jellyfin   : http://$(hostname -I | awk '{print $1}'):8096"
-echo "  SABnzbd    : http://$(hostname -I | awk '{print $1}'):8085"
-echo "  Prowlarr   : http://$(hostname -I | awk '{print $1}'):9696"
-echo "  Radarr     : http://$(hostname -I | awk '{print $1}'):7878"
-echo "  Sonarr     : http://$(hostname -I | awk '{print $1}'):8989"
-echo "  Bazarr     : http://$(hostname -I | awk '{print $1}'):6767"
-echo "  Jellyseerr : http://$(hostname -I | awk '{print $1}'):5055"
-echo "  FileFlows  : http://$(hostname -I | awk '{print $1}'):5000"
-echo "  Flaresolverr: http://$(hostname -I | awk '{print $1}'):8191"
-echo
-echo "  NEXT: wire apps together (see README 'Wiring the apps together'),"
-echo "  then deploy Cloudflare Tunnel: bash cloudflare/install_tunnel.sh"
+printf '  %-12s %s\n' 'fileflows-unit:' "$(user_systemctl is-active fileflows || true)"

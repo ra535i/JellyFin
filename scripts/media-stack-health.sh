@@ -16,7 +16,7 @@ set -uo pipefail
 
 export XDG_RUNTIME_DIR=/run/user/$(id -u)   # needed for systemctl --user outside login sessions
 
-MEDIA_POOL=/var/mnt/media
+MEDIA_POOL=/var/mnt/pool1
 DISK_ALERT_PCT=90
 PROBLEMS=""
 
@@ -51,28 +51,22 @@ for entry in $SERVICES; do
     esac
 done
 
-# ─── 3. Failed units (system + user scope) ──────────────────────────────────
-# Stale orphans (unit file deleted, state record left behind — e.g. gluetun,
-# old system-scope fileflows) would alert forever; auto-reset those silently.
-check_failed_units() {
-    local scope_flag="$1" sudo_prefix="$2" unit loadstate
-    for unit in $(systemctl $scope_flag --failed --no-legend --plain 2>/dev/null | awk '{print $1}'); do
-        # Skip Bazzite/SteamOS auto-generated app units (flatpak/gamepad integration,
-        # e.g. input-remapper-autoload) — not part of the media stack, always noisy.
-        case "$unit" in
-            app-*|app\-* ) continue ;;
-        esac
-        loadstate=$(systemctl $scope_flag show -p LoadState --value "$unit" 2>/dev/null)
-        if [ "$loadstate" = "not-found" ]; then
-            # Orphaned state record — no unit file exists. Harmless to clear.
-            $sudo_prefix systemctl reset-failed "$unit" 2>/dev/null || true
-        else
-            add_problem "Failed systemd unit: $unit (scope: ${scope_flag:-system})"
-        fi
-    done
-}
-check_failed_units "" "sudo -n"
-check_failed_units "--user" ""
+# ─── 3. Failed media-stack units only ───────────────────────────────────────
+# The host runs desktop and gaming services too; they are not media-stack health
+# signals. Check only the units this repository owns.
+SYSTEM_UNITS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr flaresolverr cloudflared)
+USER_UNITS=(fileflows gluetun qbittorrent)
+
+for unit in "${SYSTEM_UNITS[@]}"; do
+    if systemctl is-failed --quiet "$unit.service" 2>/dev/null; then
+        add_problem "Failed media-stack system unit: $unit.service"
+    fi
+done
+for unit in "${USER_UNITS[@]}"; do
+    if systemctl --user is-failed --quiet "$unit.service" 2>/dev/null; then
+        add_problem "Failed media-stack user unit: $unit.service"
+    fi
+done
 
 # ─── Verdict ────────────────────────────────────────────────────────────────
 if [ -n "$PROBLEMS" ]; then

@@ -1,31 +1,21 @@
-This directory contains everything needed to rebuild the entire media server
-stack from a fresh Bazzite install.
+# suvannmedia media stack repository
 
-See README.md in this directory for instructions.
+This repository contains the deployable configuration and recovery material for
+the current Bazzite media stack.
 
-Contents:
-  - install/setup.sh             Master installer (run this)
-  - install/install_mergerfs.sh  Downloads + installs mergerfs
-  - install/install_jellyfin.sh  Jellyfin container + systemd service
-  - install/install_arr_stack.sh SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Jellyseerr, FileFlows
-  - systemd/*.service            All systemd service files
-  - systemd/var-mnt-jellyfin.mount  Legacy external config-drive unit (not in use)
-  - cloudflare/cloudflared.service  Cloudflare Tunnel service
-  - cloudflare/config.yml.template  Tunnel config template
-  - cloudflare/install_tunnel.sh    Deploys tunnel + DNS records
-  - cloudflare/setup_access.sh      Creates Cloudflare Access gates
-  - fileflows/flows/*.json          FileFlows pipeline templates
-  - fileflows/import_flows.sh       Flow importer
-  - scripts/sab_rename_absolute_episodes.py  SABnzbd absolute-episode rename utility
-  - scripts/media-stack-updater.sh           Weekly image + cloudflared updater (cron)
-  - scripts/fix-media-permissions.sh         Permissions watchdog for /mnt/media
+- `install/setup.sh` — master installer for the production stack
+- `install/install_jellyfin.sh` — Jellyfin system-unit deployment
+- `install/install_arr_stack.sh` — Arr services and FileFlows user-unit deployment
+- `systemd/` — deployable system and user unit sources
+- `torrent/` — Gluetun + qBittorrent user units and verification
+- `cloudflare/` — system Cloudflared unit, tunnel template, and setup scripts
+- `fileflows/flows/` — checked-in FileFlows pipeline
+- `scripts/` — health check, updater, and media-permission remediation
+- `docs/RECOVERY.md` — production recovery procedure
 
-NOTE: Torrent support (Gluetun + qBittorrent) was removed Aug 2026 and
-RESTORED Aug 31 2026 (commit 3fd35e6) as a PIA-tunneled priority-2 download
-client. Both user units are active on the running system; Radarr and Sonarr
-have qBittorrent enabled alongside SABnzbd. See torrent/README.md and
-torrent/verify-torrent-stack.sh.
+Media is the single ext4 filesystem at `/var/mnt/pool1` on the hardware-RAID5
+USB enclosure. Application state and FileFlows runner scratch remain on the
+internal NVMe at `/home/skim/jellyfin-configs`.
 
-MEDIA STORAGE NOTE (Sept 2026): /mnt/media is a single 5.5T ext4 volume on a
-H/W-RAID5 USB enclosure. The 3-drive mergerfs pool is retired
-(mergerfs.service inactive, pool mounts masked).
+The retired mergerfs pool, drive-swap mount units, temporary rclone mount, and
+legacy external-config mount are intentionally not represented here.
