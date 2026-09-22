@@ -12,8 +12,8 @@ tunnel template, FileFlows flow, and operational checks.
   It holds every application database, configuration directory, cache, and the
   FileFlows runner scratch directory.
 - **Containers:** rootful, system-level Podman units for Jellyfin, the Arr
-  apps, Flaresolverr, and Cloudflared. FileFlows, Gluetun, and qBittorrent are
-  rootless user units for `skim`.
+  apps, and Flaresolverr. FileFlows, Gluetun, and qBittorrent are rootless user
+  units for `skim`; Cloudflared runs as a system service.
 - **Ingress:** Cloudflare Tunnel publishes the suvannmedia.com endpoints.
   qBittorrent shares Gluetun's network namespace; only Gluetun exposes its
   WebUI on `127.0.0.1:8090`, so the torrent client cannot bypass PIA.
@@ -24,18 +24,22 @@ intentionally absent from this repository.
 
 ## Services
 
-- Jellyfin — `8096` — `docker.io/jellyfin/jellyfin:latest`
-- Jellyseerr — `5055` — `docker.io/seerr/seerr:v3.4.1` (config is `/app/config`)
-- SABnzbd — `8085` — `docker.io/linuxserver/sabnzbd:latest`
-- Prowlarr — `9696` — `docker.io/linuxserver/prowlarr:latest`
-- Radarr — `7878` — `docker.io/linuxserver/radarr:latest`
-- Sonarr — `8989` — `docker.io/linuxserver/sonarr:latest`
-- Bazarr — `6767` — `docker.io/linuxserver/bazarr:latest`
-- Flaresolverr — `8191`, internal only — `docker.io/flaresolverr/flaresolverr:latest`
+- Jellyfin — `8096` — `docker.io/jellyfin/jellyfin@sha256:78d3ea1207d1322471fcac39a614f004f2ccf7e878f95ab2977d752f07e4dd7e`
+- Jellyseerr — `5055` — `docker.io/seerr/seerr@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1` (config is `/app/config`)
+- SABnzbd — `8085` — `docker.io/linuxserver/sabnzbd@sha256:948ea3dc45d68943ec14b33ba37ffa1488da3e9837bf3ca0f75621e971614d85`
+- Prowlarr — `9696` — `docker.io/linuxserver/prowlarr@sha256:c96b56d94d116a9f4de94bc23d3381689492e6c3cfb7435320e8d982e406f99a`
+- Radarr — `7878` — `docker.io/linuxserver/radarr@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f`
+- Sonarr — `8989` — `docker.io/linuxserver/sonarr@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2`
+- Bazarr — `6767` — `docker.io/linuxserver/bazarr@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b`
+- Flaresolverr — `8191`, internal only — `docker.io/flaresolverr/flaresolverr@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767`
 - FileFlows — `5000` — `localhost/fileflows-amd-vaapi:latest`
 - Gluetun — PIA OpenVPN, rootless user service
 - qBittorrent — exposed through Gluetun on `8090`, rootless user service
 - Cloudflared — system service; see `cloudflare/config.yml.template`
+
+Registry-backed container references are pinned by immutable digest in the units
+and updater. The digests were resolved from the current source tags; changing what
+runs requires a deliberate digest update and review.
 
 The live tunnel routes `jellyfin`, `jellyseerr`, `sabnzbd`, `prowlarr`,
 `radarr`, `sonarr`, `bazarr`, `fileflows`, and `qbittorrent` under
@@ -68,7 +72,7 @@ to the rootless FileFlows media mount.
 3. Build the FileFlows image if it is not already present:
 
 ```bash
-podman run -d --name ff-builder docker.io/revenz/fileflows:latest
+podman run -d --name ff-builder docker.io/revenz/fileflows@sha256:1f412e4e2b411a18d25538095629ef870185ea602f9840caab06088dec8231ae
 podman exec -u 0 ff-builder apt update
 podman exec -u 0 ff-builder apt install -y \
   ffmpeg vainfo mesa-va-drivers intel-media-va-driver-non-free
@@ -102,8 +106,9 @@ workflow, and normalizes compatible AC3/EAC3 5.1 audio. Import it with
 
 - `scripts/media-stack-health.sh` checks the `/var/mnt/pool1` mount, service
   HTTP endpoints, and failed units. It is intentionally silent when healthy.
-- `scripts/media-stack-updater.sh` updates latest-tagged images and Cloudflared.
-  Jellyseerr remains pinned to `v3.4.1` in the deployed unit.
+- `scripts/media-stack-updater.sh` reconciles the reviewed image digests and
+  Cloudflared. Adopt a newer container build by updating the digest in the units
+  and updater, then testing before deployment.
 - `scripts/fix-media-permissions.sh` repairs ownership/SELinux issues.
 - `docs/RECOVERY.md` is the disaster-recovery procedure.
 

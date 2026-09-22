@@ -15,7 +15,7 @@ ExecStart=/usr/bin/podman run --name jellyfin --rm \
   -v /usr/lib64/libOpenCL.so.1:/usr/lib/libOpenCL.so.1:ro \
   -v /usr/lib64/libdrm_amdgpu.so.1:/usr/lib/libdrm_amdgpu.so.1:ro \
   -v /usr/lib64/libdrm.so.2:/usr/lib/libdrm.so.2:ro \
-  docker.io/jellyfin/jellyfin:latest
+  docker.io/jellyfin/jellyfin@sha256:78d3ea1207d1322471fcac39a614f004f2ccf7e878f95ab2977d752f07e4dd7e
 Restart=on-failure
 RestartSec=10
 ExecStop=/usr/bin/podman stop jellyfin

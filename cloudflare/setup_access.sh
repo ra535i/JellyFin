@@ -4,7 +4,7 @@
 # RUN AS USER:  bash cloudflare/setup_access.sh
 #
 # Creates Cloudflare Access applications for admin services:
-#   SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr
+#   SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, FileFlows, qBittorrent
 # Protected by Google OAuth, restricted to YOUR gmail.
 #
 # Jellyfin and Jellyseerr are intentionally left OPEN (no Access gate)
@@ -21,7 +21,7 @@ SESSION_DURATION="24h"
 : "${CF_API_TOKEN:=""}"
 
 # Admin services — behind Google OAuth
-ADMIN_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr fileflows)
+ADMIN_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr fileflows qbittorrent)
 
 if [ -z "$CF_API_TOKEN" ]; then
     echo "ERROR: CF_API_TOKEN not set. Run:  export CF_API_TOKEN='your-token'"

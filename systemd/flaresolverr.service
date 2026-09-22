@@ -4,15 +4,13 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=skim
-Group=skim
 ExecStartPre=-/usr/bin/podman rm -f flaresolverr
 ExecStart=/usr/bin/podman run --name flaresolverr --replace \
   --network host \
   -e LOG_LEVEL=info \
   -e CAPTCHA_SOLVER=none \
   -e TZ=America/New_York \
-  docker.io/flaresolverr/flaresolverr:latest
+  docker.io/flaresolverr/flaresolverr@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767
 ExecStop=/usr/bin/podman stop -t 10 flaresolverr
 ExecStopPost=-/usr/bin/podman rm -f flaresolverr
 Restart=on-failure

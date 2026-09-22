@@ -50,7 +50,7 @@ causes extreme latency before processing begins.
 ## 3. Build the FileFlows image
 
 ```bash
-podman run -d --name ff-builder docker.io/revenz/fileflows:latest
+podman run -d --name ff-builder docker.io/revenz/fileflows@sha256:1f412e4e2b411a18d25538095629ef870185ea602f9840caab06088dec8231ae
 podman exec -u 0 ff-builder apt update
 podman exec -u 0 ff-builder apt install -y \
   ffmpeg vainfo mesa-va-drivers intel-media-va-driver-non-free

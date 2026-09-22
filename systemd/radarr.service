@@ -14,7 +14,7 @@ ExecStart=/usr/bin/podman run --name radarr --rm \
   -v /home/skim/jellyfin-configs/radarr:/config \
   -v /var/mnt/pool1/movies:/movies:rw,z \
   -v /var/mnt/pool1/downloads:/downloads:rw,z \
-  docker.io/linuxserver/radarr:latest
+  docker.io/linuxserver/radarr@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f
 Restart=on-failure
 RestartSec=10
 ExecStop=/usr/bin/podman stop -t 30 radarr

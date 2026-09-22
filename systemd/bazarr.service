@@ -14,7 +14,7 @@ ExecStart=/usr/bin/podman run --name bazarr --rm \
   -v /home/skim/jellyfin-configs/bazarr:/config:z \
   -v /var/mnt/pool1/movies:/movies:rw \
   -v /var/mnt/pool1/tv:/tv:rw \
-  docker.io/linuxserver/bazarr:latest
+  docker.io/linuxserver/bazarr@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b
 Restart=on-failure
 RestartSec=10
 ExecStop=/usr/bin/podman stop -t 30 bazarr

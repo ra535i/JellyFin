@@ -29,7 +29,7 @@ ExecStart=/usr/bin/podman run --name gluetun --rm \
   -e "VPN_PORT_FORWARDING_UP_COMMAND=/gluetun/update-qbittorrent-port.sh {{PORT}} {{VPN_INTERFACE}}" \
   -e FIREWALL_OUTBOUND_SUBNETS=192.168.50.0/24 \
   -e TZ=America/New_York \
-  docker.io/qmcgaw/gluetun:latest
+  docker.io/qmcgaw/gluetun@sha256:12df8b20528d4cd5e9b6e827d40f2886cf78e53e7e9afc750050648c31183793
 ExecStop=/usr/bin/podman stop -t 30 gluetun
 Restart=always
 RestartSec=15

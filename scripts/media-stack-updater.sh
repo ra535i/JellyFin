@@ -1,7 +1,7 @@
 #!/bin/bash
-# media-stack-updater.sh — Checks for updates to all media-stack container images
-# Runs: podman pull on :latest images; rebuilds FileFlows custom image; checks cloudflared binary.
-# Designed for weekly cron. Reports to STDOUT — silent if nothing new.
+# media-stack-updater.sh — Reconciles pinned media-stack container images
+# Runs: podman pull on the reviewed digest refs; rebuilds the pinned FileFlows
+# custom image; checks cloudflared. Designed for weekly cron. Reports to STDOUT.
 #
 # Exit codes:
 #   0  — success (whether or not updates were applied)
@@ -15,16 +15,18 @@ UPDATED=false
 ERRORS=0
 GIT_REPO=/home/skim/JellyFin
 
-# ─── Standard containers (just pull :latest) ─────────────────────────────────
+# ─── Pinned rootful containers ───────────────────────────────────────────────
 check_container_update() {
     local name="$1" full_image="$2"
+    shift 2
+    local -a podman_cmd=("$@")
     local old_id new_id pull_rc
 
-    old_id=$(podman image inspect "$full_image" --format '{{.Id}}' 2>/dev/null || echo 'none')
+    old_id=$("${podman_cmd[@]}" image inspect "$full_image" --format '{{.Id}}' 2>/dev/null || echo 'none')
     echo "  [$name] pulling ${full_image}..."
-    podman pull "$full_image" >/dev/null 2>&1
+    "${podman_cmd[@]}" pull "$full_image" >/dev/null 2>&1
     pull_rc=$?
-    new_id=$(podman image inspect "$full_image" --format '{{.Id}}' 2>/dev/null || echo 'none')
+    new_id=$("${podman_cmd[@]}" image inspect "$full_image" --format '{{.Id}}' 2>/dev/null || echo 'none')
 
     if [ $pull_rc -ne 0 ]; then
         echo "  ⚠️ [$name] PULL FAILED (rc=$pull_rc) — left on current image"
@@ -46,36 +48,37 @@ echo " Media Stack Updater — $(date '+%Y-%m-%d %H:%M')"
 echo "═══════════════════════════════════════════════"
 echo ""
 
-# ─── 8 standard containers ──────────────────────────────────────────────────
-check_container_update "jellyfin"    "docker.io/jellyfin/jellyfin:latest"
-# Production is intentionally pinned to the deployed Seerr release.
-check_container_update "jellyseerr"  "docker.io/seerr/seerr:v3.4.1"
-check_container_update "sabnzbd"     "docker.io/linuxserver/sabnzbd:latest"
-check_container_update "prowlarr"    "docker.io/linuxserver/prowlarr:latest"
-check_container_update "radarr"      "docker.io/linuxserver/radarr:latest"
-check_container_update "sonarr"      "docker.io/linuxserver/sonarr:latest"
-check_container_update "bazarr"      "docker.io/linuxserver/bazarr:latest"
+# ─── Pinned rootful containers ───────────────────────────────────────────────
+check_container_update "jellyfin"    "docker.io/jellyfin/jellyfin@sha256:78d3ea1207d1322471fcac39a614f004f2ccf7e878f95ab2977d752f07e4dd7e" sudo podman
+check_container_update "jellyseerr"  "docker.io/seerr/seerr@sha256:f4768de5f616248d723e05891f3345a1402123775d03bf0890dbfedc0831bda1" sudo podman
+check_container_update "sabnzbd"     "docker.io/linuxserver/sabnzbd@sha256:948ea3dc45d68943ec14b33ba37ffa1488da3e9837bf3ca0f75621e971614d85" sudo podman
+check_container_update "prowlarr"    "docker.io/linuxserver/prowlarr@sha256:c96b56d94d116a9f4de94bc23d3381689492e6c3cfb7435320e8d982e406f99a" sudo podman
+check_container_update "radarr"      "docker.io/linuxserver/radarr@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f" sudo podman
+check_container_update "sonarr"      "docker.io/linuxserver/sonarr@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2" sudo podman
+check_container_update "bazarr"      "docker.io/linuxserver/bazarr@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b" sudo podman
+check_container_update "flaresolverr" "docker.io/flaresolverr/flaresolverr@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767" sudo podman
 
 # ─── FileFlows — custom image rebuild (USER unit, not system) ────────────────
 export XDG_RUNTIME_DIR=/run/user/$(id -u)   # required for systemctl --user outside a login session
 
 echo ""
 echo "  [fileflows] checking upstream..."
+FF_IMAGE="docker.io/revenz/fileflows@sha256:1f412e4e2b411a18d25538095629ef870185ea602f9840caab06088dec8231ae"
 FF_OLD=$(podman image inspect "localhost/fileflows-amd-vaapi:latest" --format '{{.Id}}' 2>/dev/null || echo 'none')
-FF_UPSTREAM_OLD=$(podman image inspect "docker.io/revenz/fileflows:latest" --format '{{.Id}}' 2>/dev/null || echo 'none')
+FF_UPSTREAM_OLD=$(podman image inspect "$FF_IMAGE" --format '{{.Id}}' 2>/dev/null || echo 'none')
 
-podman pull docker.io/revenz/fileflows:latest >/dev/null 2>&1
+podman pull "$FF_IMAGE" >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "  ⚠️ [fileflows] upstream PULL FAILED — left on current image"
     ERRORS=$((ERRORS+1))
 else
-FF_UPSTREAM_NEW=$(podman image inspect "docker.io/revenz/fileflows:latest" --format '{{.Id}}' 2>/dev/null || echo 'none')
+FF_UPSTREAM_NEW=$(podman image inspect "$FF_IMAGE" --format '{{.Id}}' 2>/dev/null || echo 'none')
 
 if [ "$FF_UPSTREAM_OLD" != "$FF_UPSTREAM_NEW" ]; then
     echo "  ✅ [fileflows] upstream updated: ${FF_UPSTREAM_OLD:0:12} → ${FF_UPSTREAM_NEW:0:12}"
-    # Rebuild custom image
+    # Rebuild custom image from the reviewed upstream digest.
     podman rm -f ff-builder 2>/dev/null || true
-    podman run -d --name ff-builder docker.io/revenz/fileflows:latest >/dev/null
+    podman run -d --name ff-builder "$FF_IMAGE" >/dev/null
     sleep 5
     podman exec -u 0 ff-builder apt update >/dev/null 2>&1
     podman exec -u 0 ff-builder apt install -y ffmpeg vainfo mesa-va-drivers intel-media-va-driver-non-free >/dev/null 2>&1
@@ -128,7 +131,7 @@ fi
 if $UPDATED; then
     echo ""
     echo "═══ Syncing service files to repo ═══"
-    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cloudflared; do
+    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr flaresolverr cloudflared; do
         if [ -f "/etc/systemd/system/$f.service" ]; then
             sudo cp "/etc/systemd/system/$f.service" "$GIT_REPO/systemd/$f.service"
         fi

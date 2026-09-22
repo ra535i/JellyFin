@@ -14,7 +14,7 @@ ExecStart=/usr/bin/podman run --name sonarr --rm \
   -v /home/skim/jellyfin-configs/sonarr:/config:z \
   -v /var/mnt/pool1/tv:/tv:rw \
   -v /var/mnt/pool1/downloads:/downloads:rw,z \
-  docker.io/linuxserver/sonarr:latest
+  docker.io/linuxserver/sonarr@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2
 Restart=on-failure
 RestartSec=10
 ExecStop=/usr/bin/podman stop -t 30 sonarr

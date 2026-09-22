@@ -12,7 +12,7 @@ ExecStart=/usr/bin/podman run --name prowlarr --rm \
   -e PGID=1000 \
   -e TZ=America/New_York \
   -v /home/skim/jellyfin-configs/prowlarr:/config \
-  docker.io/linuxserver/prowlarr:latest
+  docker.io/linuxserver/prowlarr@sha256:c96b56d94d116a9f4de94bc23d3381689492e6c3cfb7435320e8d982e406f99a
 Restart=on-failure
 RestartSec=10
 ExecStop=/usr/bin/podman stop -t 30 prowlarr
