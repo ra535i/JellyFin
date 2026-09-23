@@ -6,6 +6,45 @@ tunnel template, FileFlows flow, and operational checks.
 
 ## Production architecture
 
+```text
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ MEDIA STORAGE — SSI hardware-RAID5 USB enclosure                              │
+│ /var/mnt/pool1 (also /mnt/pool1): ext4                                        │
+│   movies/   tv/   downloads/complete/                                         │
+│                                                                              │
+│ FAMILY REQUEST + ACQUISITION FLOW                                             │
+│ Jellyseerr ──requests──> Radarr (movies) / Sonarr (TV)                        │
+│                                  │         │                                  │
+│                                  └──> Prowlarr (indexers)                     │
+│                                             │                                 │
+│                         ┌───────────────────┴────────────────────┐            │
+│                         │                                        │            │
+│               SABnzbd (Usenet, priority 1)      qBittorrent (torrents, p2)    │
+│                                                          │                     │
+│                                           Gluetun ──PIA OpenVPN                │
+│                                           (shared namespace; fail closed)     │
+│                         └───────────────────┬────────────────────┘            │
+│                                             v                                 │
+│                                downloads/complete                             │
+│                                             │                                 │
+│                         Radarr / Sonarr import to movies/ or tv/              │
+│                                             │                                 │
+│                          FileFlows: VAAPI HEVC cap at 20 Mbps                  │
+│                          (CPU fallback; preserves HDR workflow)               │
+│                                             │                                 │
+│                              Jellyfin library scan + streaming                │
+│                                                                              │
+│ APPLICATION STATE — internal NVMe                                              │
+│ /home/skim/jellyfin-configs/                                                   │
+│   app databases, configs, cache, metadata, FileFlows runner scratch           │
+│                                                                              │
+│ INGRESS — outbound Cloudflare Tunnel → *.suvannmedia.com                       │
+│   jellyfin (8096) · jellyseerr (5055) · sabnzbd (8085) · prowlarr (9696)      │
+│   radarr (7878) · sonarr (8989) · bazarr (6767) · fileflows (5000)            │
+│   qbittorrent (8090 via Gluetun only) · Flaresolverr (8191, internal only)    │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
 - **Media:** the single ext4 filesystem at `/var/mnt/pool1` (also reachable as
   `/mnt/pool1`) on the SSI hardware-RAID5 USB enclosure.
 - **Application state:** `/home/skim/jellyfin-configs` on the internal NVMe.
