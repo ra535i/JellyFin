@@ -6,43 +6,87 @@ tunnel template, FileFlows flow, and operational checks.
 
 ## Production architecture
 
-```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ MEDIA STORAGE — SSI hardware-RAID5 USB enclosure                              │
-│ /var/mnt/pool1 (also /mnt/pool1): ext4                                        │
-│   movies/   tv/   downloads/complete/                                         │
-│                                                                              │
-│ FAMILY REQUEST + ACQUISITION FLOW                                             │
-│ Jellyseerr ──requests──> Radarr (movies) / Sonarr (TV)                        │
-│                                  │         │                                  │
-│                                  └──> Prowlarr (indexers)                     │
-│                                             │                                 │
-│                         ┌───────────────────┴────────────────────┐            │
-│                         │                                        │            │
-│               SABnzbd (Usenet, priority 1)      qBittorrent (torrents, p2)    │
-│                                                          │                     │
-│                                           Gluetun ──PIA OpenVPN                │
-│                                           (shared namespace; fail closed)     │
-│                         └───────────────────┬────────────────────┘            │
-│                                             v                                 │
-│                                downloads/complete                             │
-│                                             │                                 │
-│                         Radarr / Sonarr import to movies/ or tv/              │
-│                                             │                                 │
-│                          FileFlows: VAAPI HEVC cap at 20 Mbps                  │
-│                          (CPU fallback; preserves HDR workflow)               │
-│                                             │                                 │
-│                              Jellyfin library scan + streaming                │
-│                                                                              │
-│ APPLICATION STATE — internal NVMe                                              │
-│ /home/skim/jellyfin-configs/                                                   │
-│   app databases, configs, cache, metadata, FileFlows runner scratch           │
-│                                                                              │
-│ INGRESS — outbound Cloudflare Tunnel → *.suvannmedia.com                       │
-│   jellyfin (8096) · jellyseerr (5055) · sabnzbd (8085) · prowlarr (9696)      │
-│   radarr (7878) · sonarr (8989) · bazarr (6767) · fileflows (5000)            │
-│   qbittorrent (8090 via Gluetun only) · Flaresolverr (8191, internal only)    │
-└──────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    classDef family fill:#0e7490,stroke:#67e8f9,color:#ecfeff,stroke-width:2px
+    classDef arr fill:#1d4ed8,stroke:#93c5fd,color:#eff6ff,stroke-width:2px
+    classDef download fill:#9a3412,stroke:#fdba74,color:#fff7ed,stroke-width:2px
+    classDef secure fill:#9f1239,stroke:#fda4af,color:#fff1f2,stroke-width:2px
+    classDef media fill:#166534,stroke:#86efac,color:#f0fdf4,stroke-width:2px
+    classDef storage fill:#4c1d95,stroke:#c4b5fd,color:#f5f3ff,stroke-width:2px
+    classDef internal fill:#334155,stroke:#94a3b8,color:#f8fafc,stroke-width:2px
+    classDef cloud fill:#b45309,stroke:#fcd34d,color:#fffbeb,stroke-width:2px
+
+    subgraph INGRESS[Cloudflare Tunnel · outbound-only]
+        direction LR
+        Family[Family devices] --> Tunnel[*.suvannmedia.com]
+        Tunnel --> Jellyfin[Jellyfin<br/>streaming · :8096]
+        Tunnel --> Requests[Jellyseerr<br/>requests · :5055]
+        Tunnel --> Admin[Admin UIs<br/>SABnzbd · Prowlarr · Radarr · Sonarr<br/>Bazarr · FileFlows · qBittorrent]
+    end
+
+    subgraph APPS[Media automation · rootful Podman]
+        direction LR
+        Requests --> Radarr[Radarr<br/>movies · :7878]
+        Requests --> Sonarr[Sonarr<br/>TV · :8989]
+        Prowlarr[Prowlarr<br/>indexers · :9696] --> Radarr
+        Prowlarr --> Sonarr
+        Bazarr[Bazarr<br/>subtitles · :6767]
+        Radarr --> Bazarr
+        Sonarr --> Bazarr
+        Flare[Flaresolverr<br/>internal only · :8191] -. Cloudflare bypass .-> Prowlarr
+    end
+
+    subgraph ACQUIRE[Acquisition]
+        direction LR
+        SAB[SABnzbd<br/>Usenet · priority 1 · :8085]
+        Gluetun[Gluetun<br/>PIA OpenVPN]
+        QBit[qBittorrent<br/>torrents · priority 2 · :8090]
+        Gluetun -->|shared namespace<br/>fail closed| QBit
+    end
+
+    Radarr --> SAB
+    Sonarr --> SAB
+    Radarr --> QBit
+    Sonarr --> QBit
+
+    subgraph MEDIA[SSI hardware-RAID5 USB enclosure · ext4]
+        direction LR
+        Pool["/var/mnt/pool1<br/>also /mnt/pool1"] --> Complete[downloads/complete]
+        Complete --> Import[Radarr / Sonarr import]
+        Import --> Library[movies/ · tv/]
+        Library --> Flow[FileFlows<br/>VAAPI HEVC ≤20 Mbps<br/>CPU fallback]
+        Flow --> Jellyfin
+    end
+
+    SAB --> Complete
+    QBit --> Complete
+
+    subgraph NVME[Internal NVMe]
+        State["/home/skim/jellyfin-configs/<br/>databases · configs · cache · metadata"]
+        Scratch[FileFlows runner scratch]
+    end
+
+    %% Every service persists its configuration under jellyfin-configs;
+    %% FileFlows alone additionally uses the dedicated NVMe runner scratch.
+    Scratch -. scratch .-> Flow
+
+    class Family family
+    class Tunnel,Admin cloud
+    class Requests family
+    class Jellyfin media
+    class Radarr,Sonarr,Prowlarr,Bazarr arr
+    class SAB download
+    class Gluetun,QBit secure
+    class Pool,Complete,Import,Library,Flow media
+    class State,Scratch storage
+    class Flare internal
+
+    style INGRESS fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#f8fafc
+    style APPS fill:#0f172a,stroke:#60a5fa,stroke-width:2px,color:#f8fafc
+    style ACQUIRE fill:#0f172a,stroke:#fb923c,stroke-width:2px,color:#f8fafc
+    style MEDIA fill:#0f172a,stroke:#4ade80,stroke-width:2px,color:#f8fafc
+    style NVME fill:#0f172a,stroke:#a78bfa,stroke-width:2px,color:#f8fafc
 ```
 
 - **Media:** the single ext4 filesystem at `/var/mnt/pool1` (also reachable as
