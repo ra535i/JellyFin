@@ -65,7 +65,7 @@ sudo bash install/setup.sh
 ```
 
 This deploys system units for Jellyfin, Jellyseerr, SABnzbd, Prowlarr, Radarr,
-Sonarr, Bazarr, and Flaresolverr. It deploys FileFlows as a lingering `skim`
+Sonarr, Bazarr, Cleanuparr, and Flaresolverr. It deploys FileFlows as a lingering `skim`
 user unit. Validate the torrent user units separately after creating the
 credential file:
 
@@ -84,14 +84,15 @@ bash cloudflare/install_tunnel.sh
 ```
 
 The template includes every live public endpoint: Jellyfin, Jellyseerr,
-SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, FileFlows, and qBittorrent. Do not
-publish Flaresolverr.
+SABnzbd, Prowlarr, Radarr, Sonarr, Bazarr, Cleanuparr, FileFlows, and
+qBittorrent. Do not publish Flaresolverr. Run `cloudflare/setup_access.sh`
+afterward to create the Cleanuparr Access gate with the other admin services.
 
 ## 6. Verify the restored stack
 
 ```bash
 bash scripts/media-stack-health.sh
-for port in 8096 5055 8085 9696 7878 8989 6767 8191 5000 8090; do
+for port in 8096 5055 8085 9696 7878 8989 6767 11011 8191 5000 8090; do
   printf '%s: ' "$port"
   curl --max-time 8 -sS -o /dev/null -w '%{http_code}\n' \
     "http://127.0.0.1:$port/"
@@ -102,6 +103,25 @@ podman inspect fileflows --format '{{range .Mounts}}{{if eq .Destination "/temp"
 Expected HTTP responses may be redirects (for example Jellyfin and the Arr
 apps); a connection failure is the fault condition. The FileFlows inspection
 must print `/home/skim/jellyfin-configs/fileflows/runner-temp`.
+
+## 7. Restore Cleanuparr safely
+
+Restoring `/home/skim/jellyfin-configs/cleanuparr` restores the Cleanuparr
+database, credentials, Arr and qBittorrent associations, and queue-cleaner
+rules. Do not commit that directory or its backups: it is a credential store.
+
+Confirm the local origin before using the public route:
+
+```bash
+curl --fail --max-time 8 http://127.0.0.1:11011/health/ready
+sudo systemctl is-active cleanuparr.service
+```
+
+If its configuration could not be restored, create a new local admin account,
+associate Sonarr, Radarr, and qBittorrent, then recreate the conservative
+policy in `docs/CLEANUPARR.md`. Keep Dry Run enabled until the logs show the
+expected decisions. Do not enable orphan/file-source deletion or cleanup of
+private torrents during recovery.
 
 ## Important invariants
 

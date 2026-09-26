@@ -11,7 +11,7 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 SYSTEMD_DIR="$REPO/systemd"
 CONFIG_ROOT=/home/skim/jellyfin-configs
 MEDIA_ROOT=/var/mnt/pool1
-SYSTEM_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr jellyseerr flaresolverr)
+SYSTEM_SERVICES=(sabnzbd prowlarr radarr sonarr bazarr cleanuparr jellyseerr flaresolverr)
 
 user_systemctl() {
     runuser -u skim -- env \
@@ -30,7 +30,7 @@ mountpoint -q "$MEDIA_ROOT" || {
 for d in "$MEDIA_ROOT/downloads" "$MEDIA_ROOT/movies" "$MEDIA_ROOT/tv" \
          "$CONFIG_ROOT/sabnzbd" "$CONFIG_ROOT/prowlarr" \
          "$CONFIG_ROOT/radarr" "$CONFIG_ROOT/sonarr" \
-         "$CONFIG_ROOT/bazarr" "$CONFIG_ROOT/jellyseerr" \
+         "$CONFIG_ROOT/bazarr" "$CONFIG_ROOT/cleanuparr" "$CONFIG_ROOT/jellyseerr" \
          "$CONFIG_ROOT/fileflows/Data" "$CONFIG_ROOT/fileflows/logs" \
          "$CONFIG_ROOT/fileflows/temp"; do
     mkdir -p "$d"
@@ -87,7 +87,7 @@ printf "%-14s active=%-8s enabled=%s\n" fileflows \
 echo; echo "═══ HTTP CHECK ═══"
 declare -A PORT=(
   [sabnzbd]=8085 [prowlarr]=9696 [radarr]=7878 [sonarr]=8989
-  [bazarr]=6767 [jellyseerr]=5055 [flaresolverr]=8191 [fileflows]=5000
+  [bazarr]=6767 [cleanuparr]=11011 [jellyseerr]=5055 [flaresolverr]=8191 [fileflows]=5000
 )
 for svc in "${SYSTEM_SERVICES[@]}" fileflows; do
     port="${PORT[$svc]}"

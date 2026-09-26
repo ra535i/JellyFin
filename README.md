@@ -16,7 +16,7 @@ tunnel template, FileFlows flow, and operational checks.
   It holds every application database, configuration directory, cache, and the
   FileFlows runner scratch directory.
 - **Containers:** rootful, system-level Podman units for Jellyfin, the Arr
-  apps, and Flaresolverr. FileFlows, Gluetun, and qBittorrent are rootless user
+  apps, Cleanuparr, and Flaresolverr. FileFlows, Gluetun, and qBittorrent are rootless user
   units for `skim`; Cloudflared runs as a system service.
 - **Ingress:** Cloudflare Tunnel publishes the suvannmedia.com endpoints.
   qBittorrent shares Gluetun's network namespace; only Gluetun exposes its
@@ -35,6 +35,7 @@ intentionally absent from this repository.
 - Radarr — `7878` — `docker.io/linuxserver/radarr@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f`
 - Sonarr — `8989` — `docker.io/linuxserver/sonarr@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2`
 - Bazarr — `6767` — `docker.io/linuxserver/bazarr@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b`
+- Cleanuparr — `11011` — Arr/qBittorrent queue monitor — `ghcr.io/cleanuparr/cleanuparr@sha256:c813a155d0a43b5eb91353f269affe376a211d2ffcb15c1bc3aa76d2d55e5bee`
 - Flaresolverr — `8191`, internal only — `docker.io/flaresolverr/flaresolverr@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767`
 - FileFlows — `5000` — `localhost/fileflows-amd-vaapi:latest`
 - Gluetun — PIA OpenVPN, rootless user service
@@ -46,8 +47,10 @@ and updater. The digests were resolved from the current source tags; changing wh
 runs requires a deliberate digest update and review.
 
 The live tunnel routes `jellyfin`, `jellyseerr`, `sabnzbd`, `prowlarr`,
-`radarr`, `sonarr`, `bazarr`, `fileflows`, and `qbittorrent` under
-`suvannmedia.com`. Flaresolverr has no public route.
+`radarr`, `sonarr`, `bazarr`, `cleanuparr`, `fileflows`, and `qbittorrent` under
+`suvannmedia.com`. Flaresolverr has no public route. Cleanuparr is protected by
+its own Cloudflare Access application; direct LAN access is separate from that
+public Access gate.
 
 ## Storage and SELinux invariants
 
@@ -115,6 +118,7 @@ workflow, and normalizes compatible AC3/EAC3 5.1 audio. Import it with
   and updater, then testing before deployment.
 - `scripts/fix-media-permissions.sh` repairs ownership/SELinux issues.
 - `docs/RECOVERY.md` is the disaster-recovery procedure.
+- `docs/CLEANUPARR.md` documents Cleanuparr's safe operating policy and recovery.
 
 Never put passwords, API keys, tunnel credentials, or application databases in
 the repository.

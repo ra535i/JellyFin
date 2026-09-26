@@ -50,9 +50,9 @@ bash "$REPO/install/install_arr_stack.sh"
 printf '%s\n' '═══ HTTP VERIFY ═══'
 declare -A PORT=(
   [jellyfin]=8096 [jellyseerr]=5055 [sabnzbd]=8085 [prowlarr]=9696
-  [radarr]=7878 [sonarr]=8989 [bazarr]=6767 [flaresolverr]=8191 [fileflows]=5000
+  [radarr]=7878 [sonarr]=8989 [bazarr]=6767 [cleanuparr]=11011 [flaresolverr]=8191 [fileflows]=5000
 )
-for svc in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr flaresolverr fileflows; do
+for svc in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cleanuparr flaresolverr fileflows; do
     code=$(curl --max-time 8 -sS -o /dev/null -w '%{http_code}' \
       "http://127.0.0.1:${PORT[$svc]}/" 2>/dev/null || true)
     printf '  %-12s HTTP %s\n' "$svc" "${code:-000}"

@@ -11,6 +11,7 @@ the current Bazzite media stack.
 - `cloudflare/` — system Cloudflared unit, tunnel template, and setup scripts
 - `fileflows/flows/` — checked-in FileFlows pipeline
 - `scripts/` — health check, updater, and media-permission remediation
+- `docs/CLEANUPARR.md` — Cleanuparr queue-monitor configuration and recovery
 - `docs/RECOVERY.md` — production recovery procedure
 
 Media is the single ext4 filesystem at `/var/mnt/pool1` on the hardware-RAID5

@@ -56,6 +56,7 @@ check_container_update "prowlarr"    "docker.io/linuxserver/prowlarr@sha256:c96b
 check_container_update "radarr"      "docker.io/linuxserver/radarr@sha256:adb6c09d6b729ea5e642c99cea35af72702ef476bf4763f153299ac5db9f0b4f" sudo podman
 check_container_update "sonarr"      "docker.io/linuxserver/sonarr@sha256:a5c1a5fecbef946927ab90ad68df319ac5fe644057e5fc18cd993f01ac07b2b2" sudo podman
 check_container_update "bazarr"      "docker.io/linuxserver/bazarr@sha256:d24bd0048c759a468970989e9df11a6b96a7628d556d00f923e60a35ba59237b" sudo podman
+check_container_update "cleanuparr"  "ghcr.io/cleanuparr/cleanuparr@sha256:c813a155d0a43b5eb91353f269affe376a211d2ffcb15c1bc3aa76d2d55e5bee" sudo podman
 check_container_update "flaresolverr" "docker.io/flaresolverr/flaresolverr@sha256:c80ae007ce2ccdcd217a12426e4f039ef763ff90738c808d38810c3e59323767" sudo podman
 
 # ─── FileFlows — custom image rebuild (USER unit, not system) ────────────────
@@ -131,7 +132,7 @@ fi
 if $UPDATED; then
     echo ""
     echo "═══ Syncing service files to repo ═══"
-    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr flaresolverr cloudflared; do
+    for f in jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cleanuparr flaresolverr cloudflared; do
         if [ -f "/etc/systemd/system/$f.service" ]; then
             sudo cp "/etc/systemd/system/$f.service" "$GIT_REPO/systemd/$f.service"
         fi

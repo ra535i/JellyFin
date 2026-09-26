@@ -1,0 +1,24 @@
+[Unit]
+Description=Cleanuparr - Arr and qBittorrent queue monitor
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/home/skim/jellyfin-configs/cleanuparr
+
+[Service]
+ExecStartPre=/usr/bin/podman rm -f cleanuparr
+ExecStart=/usr/bin/podman run --name cleanuparr --rm \
+  --network host \
+  -e PORT=11011 \
+  -e BIND_ADDRESS=0.0.0.0 \
+  -e PUID=1000 \
+  -e PGID=1000 \
+  -e UMASK=022 \
+  -e TZ=America/New_York \
+  -v /home/skim/jellyfin-configs/cleanuparr:/config:z \
+  ghcr.io/cleanuparr/cleanuparr@sha256:c813a155d0a43b5eb91353f269affe376a211d2ffcb15c1bc3aa76d2d55e5bee
+Restart=on-failure
+RestartSec=10
+ExecStop=/usr/bin/podman stop -t 30 cleanuparr
+
+[Install]
+WantedBy=multi-user.target

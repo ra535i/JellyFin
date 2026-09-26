@@ -33,7 +33,7 @@ else
 fi
 
 # ─── 2. HTTP probes: name:port (any real HTTP response = alive; 000 = dead) ──
-SERVICES="jellyfin:8096 sonarr:8989 radarr:7878 prowlarr:9696 sabnzbd:8085 bazarr:6767 jellyseerr:5055 fileflows:5000 flaresolverr:8191"
+SERVICES="jellyfin:8096 sonarr:8989 radarr:7878 prowlarr:9696 sabnzbd:8085 bazarr:6767 cleanuparr:11011 jellyseerr:5055 fileflows:5000 flaresolverr:8191"
 for entry in $SERVICES; do
     name=${entry%%:*}
     port=${entry##*:}
@@ -54,7 +54,7 @@ done
 # ─── 3. Failed media-stack units only ───────────────────────────────────────
 # The host runs desktop and gaming services too; they are not media-stack health
 # signals. Check only the units this repository owns.
-SYSTEM_UNITS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr flaresolverr cloudflared)
+SYSTEM_UNITS=(jellyfin jellyseerr sabnzbd prowlarr radarr sonarr bazarr cleanuparr flaresolverr cloudflared)
 USER_UNITS=(fileflows gluetun qbittorrent)
 
 for unit in "${SYSTEM_UNITS[@]}"; do

@@ -13,7 +13,7 @@ flowchart TB
         Family[Family devices] --> Tunnel[*.suvannmedia.com]
         Tunnel --> Jellyfin[Jellyfin<br/>streaming · :8096]
         Tunnel --> Requests[Jellyseerr<br/>requests · :5055]
-        Tunnel --> Admin[Admin UIs<br/>SABnzbd · Prowlarr · Radarr · Sonarr<br/>Bazarr · FileFlows · qBittorrent]
+        Tunnel --> Admin[Admin UIs<br/>SABnzbd · Prowlarr · Radarr · Sonarr · Bazarr<br/>Cleanuparr · FileFlows · qBittorrent]
     end
 
     subgraph APPS[Media automation · rootful Podman]
@@ -23,8 +23,11 @@ flowchart TB
         Prowlarr[Prowlarr<br/>indexers · :9696] --> Radarr
         Prowlarr --> Sonarr
         Bazarr[Bazarr<br/>subtitles · :6767]
+        Clean[Cleanuparr<br/>queue monitor · :11011]
         Radarr --> Bazarr
         Sonarr --> Bazarr
+        Clean -. monitors .-> Radarr
+        Clean -. monitors .-> Sonarr
         Flare[Flaresolverr<br/>internal only · :8191] -. Cloudflare bypass .-> Prowlarr
     end
 
@@ -40,6 +43,7 @@ flowchart TB
     Sonarr --> SAB
     Radarr --> QBit
     Sonarr --> QBit
+    Clean -. monitors .-> QBit
 
     subgraph MEDIA[SSI hardware-RAID5 USB enclosure · ext4]
         direction LR
@@ -66,7 +70,7 @@ flowchart TB
     class Tunnel,Admin cloud
     class Requests family
     class Jellyfin media
-    class Radarr,Sonarr,Prowlarr,Bazarr arr
+    class Radarr,Sonarr,Prowlarr,Bazarr,Clean arr
     class SAB download
     class Gluetun,QBit secure
     class Pool,Complete,Import,Library,Flow media

@@ -37,6 +37,10 @@ ingress:
   - hostname: bazarr.suvannmedia.com
     service: http://localhost:6767
 
+  # Cleanuparr - Arr/qBittorrent queue monitor (behind Cloudflare Access)
+  - hostname: cleanuparr.suvannmedia.com
+    service: http://localhost:11011
+
   # FileFlows - media processing / transcode
   - hostname: fileflows.suvannmedia.com
     service: http://localhost:5000
