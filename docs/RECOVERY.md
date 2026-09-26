@@ -76,6 +76,12 @@ cp torrent/.env.example torrent/.env
 bash torrent/verify-torrent-stack.sh
 ```
 
+For the USB RAID5 enclosure's bounded recovery timer, follow the one-time
+installation and validation procedure in
+`systemd/POOL1-SELFHEAL-README.md`. The self-heal path refuses array recovery
+unless it can prove all five expected members are clean and mutually consistent;
+it does not create, add, rebuild, zero, or force-assemble RAID members.
+
 ## 5. Restore Cloudflare Tunnel
 
 ```bash

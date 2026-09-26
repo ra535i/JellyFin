@@ -117,6 +117,9 @@ workflow, and normalizes compatible AC3/EAC3 5.1 audio. Import it with
   Cloudflared. Adopt a newer container build by updating the digest in the units
   and updater, then testing before deployment.
 - `scripts/fix-media-permissions.sh` repairs ownership/SELinux issues.
+- `scripts/pool1-selfheal.sh` is the bounded, read-only-first recovery path for
+  the five-disk USB RAID5 pool; its install and guardrails are in
+  `systemd/POOL1-SELFHEAL-README.md`.
 - `docs/RECOVERY.md` is the disaster-recovery procedure.
 - `docs/CLEANUPARR.md` documents Cleanuparr's safe operating policy and recovery.
 

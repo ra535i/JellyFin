@@ -11,6 +11,8 @@ the current Bazzite media stack.
 - `cloudflare/` — system Cloudflared unit, tunnel template, and setup scripts
 - `fileflows/flows/` — checked-in FileFlows pipeline
 - `scripts/` — health check, updater, and media-permission remediation
+- `scripts/pool1-selfheal.sh` — bounded USB RAID5 recovery helper
+- `systemd/POOL1-SELFHEAL-README.md` — self-heal timer, sudo scope, and safeguards
 - `docs/CLEANUPARR.md` — Cleanuparr queue-monitor configuration and recovery
 - `docs/RECOVERY.md` — production recovery procedure
 

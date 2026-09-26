@@ -1,0 +1,8 @@
+[Unit]
+Description=Safely recover pool1 USB RAID5 and media stack
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pool1-selfheal --recover-rw
+TimeoutStartSec=5min

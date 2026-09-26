@@ -1,0 +1,11 @@
+[Unit]
+Description=Check pool1 USB RAID5 for safe self-healing
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+Persistent=true
+Unit=pool1-selfheal.service
+
+[Install]
+WantedBy=timers.target

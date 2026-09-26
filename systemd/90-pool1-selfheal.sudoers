@@ -1,0 +1,3 @@
+# Narrow remote recovery permission. Do not replace with broad sudo.
+skim ALL=(root) NOPASSWD: /usr/local/sbin/pool1-selfheal --status
+skim ALL=(root) NOPASSWD: /usr/local/sbin/pool1-selfheal --recover-rw
