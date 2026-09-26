@@ -12,7 +12,9 @@ the current Bazzite media stack.
 - `fileflows/flows/` — checked-in FileFlows pipeline
 - `scripts/` — health check, updater, and media-permission remediation
 - `scripts/pool1-selfheal.sh` — bounded USB RAID5 recovery helper
+- `scripts/sonarr-missing-search.sh` — rate-limited historical Sonarr backfill
 - `systemd/POOL1-SELFHEAL-README.md` — self-heal timer, sudo scope, and safeguards
+- `docs/SONARR-MISSING-SEARCH.md` — Sonarr missing-search schedule and recovery
 - `docs/CLEANUPARR.md` — Cleanuparr queue-monitor configuration and recovery
 - `docs/RECOVERY.md` — production recovery procedure
 

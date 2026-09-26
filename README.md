@@ -120,6 +120,8 @@ workflow, and normalizes compatible AC3/EAC3 5.1 audio. Import it with
 - `scripts/pool1-selfheal.sh` is the bounded, read-only-first recovery path for
   the five-disk USB RAID5 pool; its install and guardrails are in
   `systemd/POOL1-SELFHEAL-README.md`.
+- `scripts/sonarr-missing-search.sh` backfills monitored Sonarr episodes in a
+  rate-limited overnight batch; see `docs/SONARR-MISSING-SEARCH.md`.
 - `docs/RECOVERY.md` is the disaster-recovery procedure.
 - `docs/CLEANUPARR.md` documents Cleanuparr's safe operating policy and recovery.
 

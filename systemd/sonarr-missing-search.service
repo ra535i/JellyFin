@@ -1,0 +1,10 @@
+[Unit]
+Description=Rate-limited Sonarr missing-episode search batch
+After=network-online.target sonarr.service prowlarr.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=skim
+Group=skim
+ExecStart=/home/skim/JellyFin/scripts/sonarr-missing-search.sh
