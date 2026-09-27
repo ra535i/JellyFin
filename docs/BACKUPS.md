@@ -3,7 +3,10 @@
 The public `ra535i/JellyFin` repository holds reviewed, deployable source:
 systemd units, installer scripts, flow definitions, operational scripts, and
 recovery documentation. It **does not** hold application databases, API tokens,
-VPN credentials, Cloudflare credentials, or backup archives.
+VPN credentials, Cloudflare credentials, backup archives, or media files. Media
+at `/var/mnt/pool1` is intentionally protected by the production RAID array;
+these backups recover the stack and its configuration, not a second copy of the
+media library.
 
 ## Scheduled jobs
 
