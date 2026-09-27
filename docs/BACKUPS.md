@@ -20,9 +20,12 @@ VPN credentials, Cloudflare credentials, or backup archives.
   must be reviewed first.
 
 The configuration backup excludes FileFlows `runner-temp`, app caches, metadata,
-and logs because those are rebuildable runtime data. It includes FileFlows
-`Data`, Arr databases/configuration, Jellyfin state, downloader configuration,
-and other recoverable application state.
+logs, qBittorrent's downloaded Nova search engines, and transient torrent resume
+files because those are rebuildable runtime data. It includes FileFlows `Data`, Arr databases and
+configuration, Jellyfin state, downloader configuration, plus the private
+`recovery-host/` files needed to restore the PIA/qBittorrent and Cloudflare
+Tunnel configuration. The exact local FileFlows image is exported once per
+image digest to `onedrive:Backups/SuvannMedia/images/` with a SHA-256 sidecar.
 
 OneDrive access is authenticated through the host's `rclone` `onedrive` remote.
 The data contains service credentials, so protect the Microsoft account with MFA
@@ -36,8 +39,12 @@ The lingering user timer `hermes-onedrive-backup.timer` runs Sundays at
 approximately 04:00 local time and writes a compressed recovery archive plus a
 SHA-256 sidecar to `onedrive:Hermes/Backups/`. It includes the active `last`
 profile's skills, plugins, memories, scripts, cron definitions, session index,
-configuration, credentials, and coherent SQLite snapshots. Rebuildable logs,
-caches, installed binaries, and stale state snapshots are excluded.
+configuration, credentials, vault, and coherent SQLite snapshots. It also saves
+the root gateway/default-profile state and the user systemd unit definitions
+needed to restore the live profile-multiplexer topology. The live script and its
+user systemd service/timer are versioned under `hermes/` in this repository.
+Rebuildable logs, caches, installed binaries, and stale state snapshots are
+excluded.
 
 ## Restore the Hermes profile
 
@@ -47,9 +54,16 @@ use a private directory and do not commit or share its contents. Restore to a
 staging directory first, verify the checksum, and preserve the current profile
 for rollback rather than deleting it.
 
-1. Install Hermes and `rclone` on the replacement host, then configure the
-   `onedrive` remote with access to the backup account. List the available
-   archives and choose the desired UTC timestamp:
+1. Install Hermes and `rclone` on the replacement host, clone this repository,
+   then install the versioned backup job. Configure the `onedrive` remote with
+   access to the backup account. (The rclone file inside an archive is useful
+   only after download, not as the initial bootstrap.)
+
+   ```bash
+   sudo bash /home/skim/JellyFin/hermes/install-backup.sh
+   ```
+
+   List the available archives and choose the desired UTC timestamp:
 
    ```bash
    rclone lsl onedrive:Hermes/Backups
@@ -70,9 +84,9 @@ for rollback rather than deleting it.
    tar --zstd -tf "$ARCHIVE" | less
    ```
 
-   The checksum command must report `OK`. The archive should contain a top-level
-   `profile/` directory and a `recovery/` directory. Stop here if either check
-   fails; do not restore an unverified archive.
+   The checksum command must report `OK`. The archive should contain top-level
+   `profile/`, `recovery/host/`, and `recovery/systemd-user/` directories. Stop
+   here if any check fails; do not restore an unverified archive.
 
 3. Extract to the staging directory, stop the profile's gateway so it cannot
    write state during replacement, and move the current profile aside. This
@@ -81,15 +95,21 @@ for rollback rather than deleting it.
    ```bash
    tar --zstd -xf "$ARCHIVE"
    test -f "$RECOVERY_DIR/profile/config.yaml"
+   test -f "$RECOVERY_DIR/recovery/host/config.yaml"
 
    systemctl --user stop hermes-gateway.service
-   PROFILE_ROOT=/home/skim/.hermes/profiles
+   HERMES_ROOT=/home/skim/.hermes
+   PROFILE_ROOT="$HERMES_ROOT/profiles"
    BACKUP_NAME="last-pre-restore-$(date -u +%Y%m%dT%H%M%SZ)"
-   mkdir -p "$PROFILE_ROOT"
+   mkdir -p "$PROFILE_ROOT" /home/skim/.config/systemd/user
    if [ -d "$PROFILE_ROOT/last" ]; then
      mv "$PROFILE_ROOT/last" "$PROFILE_ROOT/$BACKUP_NAME"
    fi
+   cp -a "$RECOVERY_DIR/recovery/host/." "$HERMES_ROOT/"
    mv "$RECOVERY_DIR/profile" "$PROFILE_ROOT/last"
+   cp -a "$RECOVERY_DIR/recovery/systemd-user/." /home/skim/.config/systemd/user/
+   systemctl --user daemon-reload
+   systemctl --user enable hermes-gateway.service hermes-onedrive-backup.timer
    ```
 
 4. Start Hermes and verify both the gateway and the restored profile. A successful

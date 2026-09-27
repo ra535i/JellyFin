@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly Hermes profile backup to OneDrive
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

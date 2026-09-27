@@ -22,17 +22,59 @@ scope and exclusions.
 ## 1. Prepare Bazzite and clone
 
 ```bash
-sudo dnf install -y git podman
+sudo rpm-ostree install git podman rclone sqlite zstd policycoreutils-python-utils
+# Reboot into the new deployment, then resume this guide.
+sudo systemctl reboot
+# After reboot:
 sudo mkdir -p /var/mnt/pool1
 # Mount the production media filesystem here before starting services.
 git clone https://github.com/ra535i/JellyFin.git /home/skim/JellyFin
 cd /home/skim/JellyFin
 ```
 
-## 2. Restore or create application state
+## 2. Restore application and host state before services
 
-Restore `/home/skim/jellyfin-configs` from its backup before starting services
-when possible. Otherwise create it and complete first-run setup in each app.
+Configure the `onedrive` rclone remote with the recovery Microsoft account,
+then restore the current state mirror before starting any container. The backup
+contains credentials; keep the staging directory private and never commit it.
+
+```bash
+umask 077
+RECOVERY_DIR=$(mktemp -d)
+rclone copy onedrive:Backups/SuvannMedia/config-current/ "$RECOVERY_DIR/config-current/" \
+  --exclude '/recovery-host/**'
+rclone copy onedrive:Backups/SuvannMedia/config-current/recovery-host/ \
+  "$RECOVERY_DIR/recovery-host/"
+mkdir -p /home/skim/jellyfin-configs
+cp -a "$RECOVERY_DIR/config-current/." /home/skim/jellyfin-configs/
+
+# Restore the private host state that is intentionally outside jellyfin-configs.
+cp -a "$RECOVERY_DIR/recovery-host/JellyFin/torrent/.env" \
+  /home/skim/JellyFin/torrent/.env
+mkdir -p /home/skim/.cloudflared /home/skim/.config/systemd/user
+cp -a "$RECOVERY_DIR/recovery-host/.cloudflared/." /home/skim/.cloudflared/
+cp -a "$RECOVERY_DIR/recovery-host/.config/systemd/user/." \
+  /home/skim/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable gluetun.service qbittorrent.service
+```
+
+The current FileFlows image must be restored before running `install/setup.sh`.
+Choose the image archive matching the desired backup timestamp, verify its
+sidecar, then load it:
+
+```bash
+rclone lsl onedrive:Backups/SuvannMedia/images
+IMAGE=fileflows-amd-vaapi-<image-digest>.tar.zst
+rclone copyto "onedrive:Backups/SuvannMedia/images/$IMAGE" "$RECOVERY_DIR/$IMAGE"
+rclone copyto "onedrive:Backups/SuvannMedia/images/$IMAGE.sha256" \
+  "$RECOVERY_DIR/$IMAGE.sha256"
+cd "$RECOVERY_DIR"
+sha256sum -c "$IMAGE.sha256"
+zstd -dc "$IMAGE" | podman load
+```
+
+Then reapply ownership and SELinux labels:
 
 ```bash
 sudo chown -R skim:skim /home/skim/jellyfin-configs

@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up Hermes profile to OneDrive
+Wants=network-online.target
+After=network-online.target hermes-gateway.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/skim/.hermes/profiles/last/scripts/hermes-onedrive-backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
