@@ -8,4 +8,6 @@ Type=oneshot
 User=skim
 Group=skim
 WorkingDirectory=/home/skim/JellyFin
-ExecStart=/home/skim/JellyFin/scripts/suvannmedia-repo-backup-push.sh
+# See suvannmedia-config-backup.service: invoke through bash so SELinux does
+# not reject direct execution of a repository script beneath /home.
+ExecStart=/usr/bin/bash /home/skim/JellyFin/scripts/suvannmedia-repo-backup-push.sh

@@ -8,7 +8,10 @@ Type=oneshot
 User=skim
 Group=skim
 WorkingDirectory=/home/skim/JellyFin
-ExecStart=/home/skim/JellyFin/scripts/suvannmedia-config-backup.sh
+# System services cannot exec scripts labeled in the user's home directory
+# under the active SELinux policy. Run the repository-owned script through
+# the system interpreter as the unprivileged backup user instead.
+ExecStart=/usr/bin/bash /home/skim/JellyFin/scripts/suvannmedia-config-backup.sh
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=7
