@@ -14,7 +14,10 @@ Provide these outside the repository:
   recreated in the application UIs
 - A mounted production media filesystem at `/var/mnt/pool1`
 
-No credential, application database, or backup archive belongs in git.
+No credential, application database, or backup archive belongs in git. The
+weekly application-state mirror is stored at `onedrive:Backups/SuvannMedia/`;
+restore it before starting the relevant containers. See `docs/BACKUPS.md` for
+scope and exclusions.
 
 ## 1. Prepare Bazzite and clone
 
@@ -32,9 +35,7 @@ Restore `/home/skim/jellyfin-configs` from its backup before starting services
 when possible. Otherwise create it and complete first-run setup in each app.
 
 ```bash
-mkdir -p /home/skim/jellyfin-configs/fileflows/runner-temp
 sudo chown -R skim:skim /home/skim/jellyfin-configs
-chmod 0775 /home/skim/jellyfin-configs/fileflows/runner-temp
 sudo chmod 711 /home/skim
 sudo semanage fcontext -a -t container_file_t \
   '/var/home/skim/jellyfin-configs(/.*)?' || \
@@ -43,9 +44,14 @@ sudo semanage fcontext -a -t container_file_t \
 sudo restorecon -RF /var/home/skim/jellyfin-configs
 ```
 
-Keep FileFlows `runner-temp` on this NVMe path. It must not be relocated onto
-`/var/mnt/pool1`: plugin startup is metadata-heavy and RAID-backed scratch
-causes extreme latency before processing begins.
+Keep the FileFlows workspace on its dedicated secondary-NVMe path. It must not
+be relocated onto `/var/mnt/pool1`: plugin startup is metadata-heavy and
+RAID-backed scratch causes extreme latency before processing begins.
+
+The dedicated FileFlows workspace is mounted from the secondary NVMe at
+`/run/media/system/internal-2`. The installer creates
+`/run/media/system/internal-2/fileflows-working` after enabling the checked-in
+`run-media-system-internal\\x2d2.mount` unit.
 
 ## 3. Build the FileFlows image
 
@@ -108,7 +114,7 @@ podman inspect fileflows --format '{{range .Mounts}}{{if eq .Destination "/temp"
 
 Expected HTTP responses may be redirects (for example Jellyfin and the Arr
 apps); a connection failure is the fault condition. The FileFlows inspection
-must print `/home/skim/jellyfin-configs/fileflows/runner-temp`.
+must print `/run/media/system/internal-2/fileflows-working`.
 
 ## 7. Restore Cleanuparr safely
 

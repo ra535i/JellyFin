@@ -10,6 +10,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 MEDIA_ROOT=/var/mnt/pool1
 CONFIG_ROOT=/home/skim/jellyfin-configs
+SYSTEMD_DIR="$REPO/systemd"
+FILEFLOWS_WORKSPACE=/run/media/system/internal-2/fileflows-working
 
 user_systemctl() {
     runuser -u skim -- env \
@@ -37,7 +39,23 @@ if command -v semanage &>/dev/null; then
       '/var/home/skim/jellyfin-configs(/.*)?'
     restorecon -RF /var/home/skim/jellyfin-configs
 fi
-install -d -o skim -g skim -m 0775 "$CONFIG_ROOT/fileflows/runner-temp"
+
+# FileFlows uses a dedicated secondary NVMe workspace. Install the explicit
+# mount unit before its user service so a reboot cannot race the workspace.
+install -m 0644 "$SYSTEMD_DIR/run-media-system-internal\\x2d2.mount" \
+  /etc/systemd/system/run-media-system-internal\\x2d2.mount
+install -m 0644 "$SYSTEMD_DIR/suvannmedia-config-backup.service" \
+  /etc/systemd/system/
+install -m 0644 "$SYSTEMD_DIR/suvannmedia-config-backup.timer" \
+  /etc/systemd/system/
+install -m 0644 "$SYSTEMD_DIR/suvannmedia-repo-backup.service" \
+  /etc/systemd/system/
+install -m 0644 "$SYSTEMD_DIR/suvannmedia-repo-backup.timer" \
+  /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now run-media-system-internal\\x2d2.mount >/dev/null
+install -d -o skim -g skim -m 0775 "$FILEFLOWS_WORKSPACE"
+systemctl enable --now suvannmedia-config-backup.timer suvannmedia-repo-backup.timer >/dev/null
 
 if ! podman image exists localhost/fileflows-amd-vaapi:latest; then
     echo 'ERROR: localhost/fileflows-amd-vaapi:latest is missing. Build it using README.md before setup.' >&2

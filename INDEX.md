@@ -16,6 +16,7 @@ the current Bazzite media stack.
 - `systemd/POOL1-SELFHEAL-README.md` — self-heal timer, sudo scope, and safeguards
 - `docs/SONARR-MISSING-SEARCH.md` — Sonarr missing-search schedule and recovery
 - `docs/CLEANUPARR.md` — Cleanuparr queue-monitor configuration and recovery
+- `docs/BACKUPS.md` — scheduled repository and OneDrive recovery backups
 - `docs/RECOVERY.md` — production recovery procedure
 
 Media is the single ext4 filesystem at `/var/mnt/pool1` on the hardware-RAID5

@@ -1,0 +1,12 @@
+[Unit]
+Description=Secondary NVMe FileFlows workspace
+Before=local-fs.target
+
+[Mount]
+What=/dev/disk/by-uuid/4502c6d9-cc5b-4c27-99c9-d7f6c988bbb4
+Where=/run/media/system/internal-2
+Type=ext4
+Options=rw,nosuid,nodev,noatime,seclabel,errors=remount-ro
+
+[Install]
+WantedBy=multi-user.target

@@ -124,6 +124,9 @@ workflow, and normalizes compatible AC3/EAC3 5.1 audio. Import it with
   rate-limited overnight batch; see `docs/SONARR-MISSING-SEARCH.md`.
 - `docs/RECOVERY.md` is the disaster-recovery procedure.
 - `docs/CLEANUPARR.md` documents Cleanuparr's safe operating policy and recovery.
+- `docs/BACKUPS.md` documents the scheduled source, application-state, and Hermes
+  recovery backups. Application state is deliberately backed up to OneDrive, not
+  committed to this public repository.
 
 Never put passwords, API keys, tunnel credentials, or application databases in
 the repository.

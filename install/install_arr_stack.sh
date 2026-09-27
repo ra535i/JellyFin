@@ -46,9 +46,9 @@ if command -v semanage &>/dev/null; then
 fi
 echo "dirs and SELinux labels ok"
 
-# FileFlows runner scratch must remain on the internal NVMe. Keeping this
-# outside the media filesystem avoids RAID5 metadata contention during plugin startup.
-install -d -o skim -g skim -m 0775 /home/skim/jellyfin-configs/runner-temp
+# FileFlows runner scratch is provisioned by setup.sh on the dedicated secondary
+# NVMe at /run/media/system/internal-2/fileflows-working. It must remain off the
+# media filesystem to avoid RAID5 metadata contention during plugin startup.
 
 # --- Install system units --------------------------------------------------
 echo; echo "═══ INSTALLING SYSTEM UNITS ═══"

@@ -1,0 +1,14 @@
+[Unit]
+Description=Back up SuvannMedia application state to OneDrive
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=skim
+Group=skim
+WorkingDirectory=/home/skim/JellyFin
+ExecStart=/home/skim/JellyFin/scripts/suvannmedia-config-backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

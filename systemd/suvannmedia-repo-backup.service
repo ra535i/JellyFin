@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify and push committed SuvannMedia repository backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=skim
+Group=skim
+WorkingDirectory=/home/skim/JellyFin
+ExecStart=/home/skim/JellyFin/scripts/suvannmedia-repo-backup-push.sh
